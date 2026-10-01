@@ -10,7 +10,7 @@
 | Rendering | Fixed native surface; cursor-centered image transforms, transparency and click-through input |
 | Opacity | 10–100% slider and Alt+wheel; original image data retained |
 | Input | Real modifier-wheel behavior checked; Qt horizontal translation handled for Alt/Shift gestures |
-| Capture placement | Frozen-snapshot selector retains the normalized top-left in both drag directions; 20 px placement offset |
+| Capture placement | Frozen-snapshot selector retains the normalized rectangle in both drag directions; pins stay in place with a thin frame |
 | Recovery | Bring Pins into View command for off-screen images |
 | Helper lifecycle | Exclusive daemon lock; rejected requests do not spawn another helper |
 | Licensing | GPL-3.0-only helper; independent MIT wrapper, with notices retained in bundled commands |

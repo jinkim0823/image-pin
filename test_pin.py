@@ -313,11 +313,22 @@ class PinTests(unittest.TestCase):
                     selector.mousePressEvent(press)
                     selector.mouseReleaseEvent(release)
                 pin = self.manager.pins[-1]
-                self.assertEqual(pin.rect().topLeft(), QPointF(140, 160))
+                self.assertEqual(pin.rect().topLeft(), QPointF(120, 140))
                 self.assertEqual(pin.image.size(), QRect(0, 0, 200, 100).size())
                 self.assertEqual(pin.image.toImage().pixelColor(0, 0), QColor('#ff426b'))
                 self.assertIsNone(self.manager.capture_selector)
                 self.manager.close_all()
+
+    def test_pin_frame_is_drawn_just_outside_the_image(self):
+        self.manager.pin(self.image, QPointF(100, 100), 1.)
+        surface = self.manager.surface
+        origin = surface.geometry().topLeft()
+        pixels = surface.grab().toImage()
+        inside = QPoint(100, 100) - origin
+        frame = QPoint(99, 99) - origin
+        self.assertEqual(pixels.pixelColor(inside), QColor('blue'))
+        self.assertGreater(pixels.pixelColor(frame).alpha(), 0)
+        self.assertNotEqual(pixels.pixelColor(frame), QColor('blue'))
 
     def test_capture_maps_scaled_snapshot_and_negative_desktop_origin(self):
         from capture_selector import CaptureSelector
@@ -344,6 +355,24 @@ class PinTests(unittest.TestCase):
         self.assertEqual(image.toImage().pixelColor(0, 0), QColor('red'))
         self.assertEqual(image.toImage().pixelColor(239, 179), QColor('blue'))
         self.assertTrue(selector.snapshot.isNull())
+        selector.deleteLater()
+
+    def test_selector_dims_only_after_drag_begins(self):
+        from capture_selector import CaptureSelector
+        snapshot = QPixmap(200, 150)
+        snapshot.fill(QColor('#4080c0'))
+        selector = CaptureSelector(snapshot, QRect(0, 0, 200, 150))
+        # Mapping must not change the visible desktop before any drag.
+        self.assertEqual(selector.grab().toImage().pixelColor(10, 10), QColor('#4080c0'))
+        start, end = QPoint(50, 50), QPoint(120, 100)
+        selector.mousePressEvent(QMouseEvent(QEvent.MouseButtonPress, start, start,
+                                            Qt.LeftButton, Qt.LeftButton, Qt.NoModifier))
+        selector.mouseMoveEvent(QMouseEvent(QEvent.MouseMove, end, end,
+                                           Qt.NoButton, Qt.LeftButton, Qt.NoModifier))
+        pixels = selector.grab().toImage()
+        self.assertNotEqual(pixels.pixelColor(10, 10), QColor('#4080c0'))
+        self.assertEqual(pixels.pixelColor(80, 75), QColor('#4080c0'))
+        selector.cancel()
         selector.deleteLater()
 
     def test_cancel_own_selector_creates_no_pin(self):

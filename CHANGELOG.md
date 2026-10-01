@@ -3,8 +3,9 @@
 ## 0.1.0
 
 - Area capture, clipboard images and existing image files through Vicinae.
-- Area pins use the selected region's top-left with a 20 px offset, including
-  reverse drags. A frozen-snapshot selector retains the capture coordinates.
+- Area pins stay exactly over the selected region, including reverse drags,
+  with a thin frame distinguishing every pin from the desktop. A frozen-snapshot selector retains the capture coordinates
+  and dims the desktop only after a drag begins.
 - Cursor-centered zoom, fine zoom and resizing while dragging.
 - Stable transparent overlay with image-only input regions.
 - Per-image opacity slider and Alt+wheel adjustment.

@@ -65,7 +65,7 @@ def launch(command, path=None, language="system"):
 
 
 def gui_types():
-    from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF, QTimer, QProcess
+    from PyQt5.QtCore import Qt, QPointF, QRect, QRectF, QTimer, QProcess
     from PyQt5.QtGui import QImage, QPixmap, QPainter, QCursor, QColor, QKeySequence
     from PyQt5.QtWidgets import QApplication, QWidget, QMenu, QFileDialog, QMessageBox, QWidgetAction, QSlider, QLabel, QHBoxLayout
     from PyQt5.QtNetwork import QLocalServer
@@ -82,13 +82,17 @@ def gui_types():
             self.min_scale = min(1., initial_scale, 64 / max(image.width(), image.height()))
             self.max_scale = max(1., min(5., 8192 / max(image.width(), image.height()),
                                        math.sqrt(16_000_000 / (image.width() * image.height()))))
-            origin = QPointF(QCursor.pos()) if origin is None else QPointF(origin)
-            screen = QApplication.screenAt(origin.toPoint()) or QApplication.primaryScreen()
+            if origin is not None:
+                # Area captures stay exactly over the region they came from.
+                self.scale = initial_scale
+                self.center = QPointF(origin) + QPointF(image.width(), image.height()) * self.scale / 2
+                return
+            screen = QApplication.screenAt(QCursor.pos()) or QApplication.primaryScreen()
             available = screen.availableGeometry()
             self.scale = min(initial_scale, available.width() * .7 / image.width(),
                              available.height() * .7 / image.height())
             width, height = image.width() * self.scale, image.height() * self.scale
-            point = origin + QPointF(20, 20)
+            point = QPointF(QCursor.pos()) + QPointF(20, 20)
             x = max(available.left(), min(point.x(), available.right() + 1 - width))
             y = max(available.top(), min(point.y(), available.bottom() + 1 - height))
             self.center = QPointF(x + width / 2, y + height / 2)
@@ -279,6 +283,11 @@ def gui_types():
                 if target.intersects(QRectF(event.rect())):
                     painter.setOpacity(pin.opacity)
                     painter.drawPixmap(target, pin.image, QRectF(pin.image.rect()))
+                    # A pin captured in place is otherwise indistinguishable
+                    # from the desktop. Draw a subtle frame just outside it.
+                    painter.setOpacity(1.)
+                    painter.setPen(QColor(128, 128, 128, 200))
+                    painter.drawRect(target.adjusted(-.5, -.5, .5, .5))
 
         def hit(self, point):
             return next((pin for pin in reversed(self.manager.pins) if pin.rect().contains(QPointF(point))), None)

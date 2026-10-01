@@ -28,8 +28,15 @@ desktop rectangle. Using the cursor afterward placed the pin beside the drag's
 release point (usually the bottom-right). Image Pin now freezes the desktop with
 GNOME Screenshot, removes the temporary file, and shows its own region selector.
 The selector keeps the normalized rectangle, crops the snapshot, and places the
-pin relative to that rectangle's top-left. Escape or right-click cancels. The
+pin exactly over that rectangle with a thin frame. Escape or right-click cancels. The
 full snapshot is discarded when selection ends; only the crop becomes a pin.
+
+The selector shows the frozen snapshot without dimming until a drag begins, so
+mapping it does not visibly change the screen. GNOME Screenshot 41 still plays
+its own full-screen flash when taking the snapshot. GNOME Shell 46 denies its
+screenshot D-Bus methods (including area selection and flash control) to
+non-allowlisted clients, so Image Pin cannot request the selected rectangle or
+a flash-free capture directly.
 
 Snapshot pixels are mapped to Qt desktop coordinates before cropping, preserving
 the initial displayed size on uniformly scaled desktops. This mapping assumes

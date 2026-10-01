@@ -140,7 +140,7 @@ try:
     print('Real drag + wheel + focus + Escape: PASS')
 
     # The area selector owns its frozen, generated background. Every drag
-    # direction must place the pin beside the normalized selection origin,
+    # direction must place the pin exactly over the normalized selection,
     # never beside the release point. This does not capture desktop content.
     snapshot = QPixmap(surface.size())
     snapshot.fill(QColor('#253047'))
@@ -157,7 +157,7 @@ try:
         assert manager.capture_selector is None
         assert len(manager.pins) == 1
         pin = manager.pins[0]
-        assert pin.rect().topLeft() == QPointF(280, 260), pin.rect()
+        assert pin.rect().topLeft() == QPointF(260, 240), pin.rect()
         assert pin.image.width() == 200 and pin.image.height() == 100
         assert surface.geometry() == native_geometry
         manager.close_all()

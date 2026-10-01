@@ -129,10 +129,9 @@ image remains pinned. Images otherwise stay in memory unless you explicitly
 save them. Copying uses the system clipboard;
 your clipboard manager may retain copied images under its own settings.
 
-Captured images appear 20 desktop pixels right and down from the selected
-region's top-left, regardless of drag direction. Placement is adjusted near
-screen edges to keep the image visible. Clipboard and file pins use the mouse
-position instead.
+Captured images stay exactly over the selected region, regardless of drag
+direction, with a thin gray frame marking the pin. Clipboard and file pins
+appear beside the mouse position instead.
 
 The renderer uses one transparent desktop-sized surface. Zoom and drag change
 image transforms inside that surface, leaving its native geometry unchanged.
@@ -148,6 +147,9 @@ input routing and zero native configure events during zoom. See
 
 - **Helper not found:** run `./install.sh`, then check the executable preference.
 - **No display:** run from the same graphical session with working `DISPLAY`.
+- **Screen flashes once on capture:** GNOME Screenshot flashes when it takes the
+  full-desktop snapshot used for region selection. GNOME Shell does not allow
+  third-party clients to disable it.
 - **Capture fails:** check that `gnome-screenshot` is installed and works in your
   GNOME session. Escape cancels the region selector.
 - **Images went off-screen:** run **Bring Pins into View**.

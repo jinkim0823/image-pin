@@ -35,7 +35,8 @@ class CaptureSelector(QWidget):
         selected = self.selection().translated(-self.desktop.x(), -self.desktop.y())
         shade = QColor(0, 0, 0, 80)
         if selected.isEmpty():
-            painter.fillRect(self.rect(), shade)
+            # The frozen snapshot matches the live desktop, so mapping the
+            # selector is invisible. Dim only once a drag begins.
             return
         # Keep the selected pixels clear. The selector itself is never captured.
         width, height = self.width(), self.height()
