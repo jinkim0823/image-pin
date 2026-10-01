@@ -13,6 +13,8 @@
 - Bring Pins into View recovery command.
 - Built on Qt 6 through PySide6-Essentials; Qt 5.15 no longer receives
   open-source updates.
+- The installer lists every missing prerequisite with a ready-to-run
+  `apt` command instead of stopping at the first one.
 - `install.sh --helper-only` installs the helper without Node.js or Vicinae.
 - Escape returns keyboard focus to the previously focused window.
 - Errors use non-blocking desktop notifications.

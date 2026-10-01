@@ -3,6 +3,10 @@
 Keep screenshots and reference images above your Linux apps. Drag them directly,
 zoom at the cursor, and adjust opacity without switching windows.
 
+> **GNOME only for now.** Tested on Ubuntu 24.04 / GNOME 46 (Wayland with
+> XWayland). Capture uses GNOME Screenshot, so Hyprland, KDE, sway and other
+> desktops are not supported yet. See [Supported environment](#supported-environment).
+
 ![Image Pin rendered preview](docs/assets/demo.gif)
 
 *Rendered at 50 fps with scripted input and generated images on the actual

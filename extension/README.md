@@ -1,5 +1,8 @@
 # Image Pin for Vicinae
 
+> **GNOME only for now** (tested on Ubuntu 24.04 / GNOME 46). Requires the
+> separately installed Image Pin helper.
+
 Keep screenshot regions, clipboard images and image files above your Linux apps.
 Drag to move, scroll to zoom at the cursor, Shift+scroll for fine zoom and
 Alt+scroll to adjust opacity. You can zoom while holding and dragging an image.

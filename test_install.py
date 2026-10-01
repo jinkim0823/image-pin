@@ -91,5 +91,26 @@ class InstallerTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
 
 
+    def test_missing_prerequisites_print_one_ready_command(self):
+        with tempfile.TemporaryDirectory(prefix='image-pin-missing-') as tmp:
+            root = Path(tmp)
+            shutil.copy(PROJECT / 'install.sh', root / 'install.sh')
+            # Only the shell utilities the installer itself uses; no uv,
+            # gnome-screenshot or libxcb-cursor are visible.
+            tools = root / 'tools'
+            tools.mkdir()
+            for name in ('dirname', 'grep'):
+                (tools / name).symlink_to(shutil.which(name))
+            (tools / 'ldconfig').write_text('#!/bin/bash\nexit 0\n')
+            (tools / 'ldconfig').chmod(0o755)
+            env = {**os.environ, 'PATH': str(tools)}
+            result = subprocess.run([shutil.which('bash'), str(root / 'install.sh'), '--helper-only'],
+                                    env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertIn('sudo apt install gnome-screenshot libxcb-cursor0', result.stderr)
+            self.assertIn('uv: https://docs.astral.sh/uv/', result.stderr)
+            self.assertNotIn('node', result.stderr)
+
+
 if __name__ == '__main__':
     unittest.main()

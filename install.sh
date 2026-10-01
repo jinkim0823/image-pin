@@ -14,16 +14,36 @@ TOOLS=(uv gnome-screenshot)
 if [[ "$HELPER_ONLY" == false ]]; then
     TOOLS+=(npm node vicinae)
 fi
+# Collect every missing prerequisite and print ready-to-run instructions.
+# System packages are never installed by this script.
+APT_PACKAGES=()
+OTHER_STEPS=()
 for tool in "${TOOLS[@]}"; do
     if ! command -v "$tool" >/dev/null 2>&1; then
-        printf 'Missing prerequisite: %s. See README.md for installation.\n' "$tool" >&2
-        exit 1
+        case "$tool" in
+            gnome-screenshot) APT_PACKAGES+=(gnome-screenshot) ;;
+            uv) OTHER_STEPS+=('uv: https://docs.astral.sh/uv/getting-started/installation/') ;;
+            npm|node) OTHER_STEPS+=("$tool: Node.js 22 or later, https://nodejs.org/en/download (or use --helper-only)") ;;
+            vicinae) OTHER_STEPS+=('vicinae: https://docs.vicinae.com/ (or use --helper-only)') ;;
+        esac
     fi
 done
 # Qt 6's X11 platform plugin cannot load without libxcb-cursor.
 LDCONFIG="$(command -v ldconfig || printf /sbin/ldconfig)"
 if ! "$LDCONFIG" -p 2>/dev/null | grep -q 'libxcb-cursor\.so\.0'; then
-    printf 'Missing library: libxcb-cursor0 (required by Qt 6). See README.md for installation.\n' >&2
+    APT_PACKAGES+=(libxcb-cursor0)
+fi
+if (( ${#APT_PACKAGES[@]} + ${#OTHER_STEPS[@]} )); then
+    printf 'Image Pin needs a few prerequisites first.\n' >&2
+    if (( ${#APT_PACKAGES[@]} )); then
+        printf '\nInstall the missing packages (%s) with:\n  sudo apt install %s\n' \
+            "${APT_PACKAGES[*]}" "${APT_PACKAGES[*]}" >&2
+    fi
+    if (( ${#OTHER_STEPS[@]} )); then
+        printf '\nAlso install:\n' >&2
+        printf '  %s\n' "${OTHER_STEPS[@]}" >&2
+    fi
+    printf '\nThen run this installer again.\n' >&2
     exit 1
 fi
 INSTALL_BIN="${IMAGE_PIN_BIN_DIR:-$HOME/.local/bin}"
