@@ -28,7 +28,7 @@ Shell extension.
 ## Supported environment
 
 Tested on **Ubuntu 24.04, GNOME 46, Wayland with XWayland, x86-64,
-Python 3.12 and Vicinae 0.27.3**. The overlay requires X11 SHAPE 1.1.
+Python 3.12, Qt 6 (PySide6) and Vicinae 0.27.3**. The overlay requires X11 SHAPE 1.1.
 
 Other desktop environments, native Wayland-only sessions, macOS and Windows
 have not been validated. Capture currently uses GNOME Screenshot. The helper
@@ -40,7 +40,7 @@ Install [Vicinae](https://docs.vicinae.com/), [uv](https://docs.astral.sh/uv/get
 and Node.js 22 or later with npm. On Ubuntu, install the native dependencies:
 
 ```zsh
-sudo apt install gnome-screenshot libx11-6 libxext6 libxkbcommon-x11-0 libxcb-xinerama0
+sudo apt install gnome-screenshot libnotify-bin libx11-6 libxext6 libxkbcommon-x11-0 libxcb-cursor0 libxcb-xinerama0
 ```
 
 Then clone this source repository and run the installer:

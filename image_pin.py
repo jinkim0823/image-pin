@@ -69,10 +69,10 @@ def launch(command, path=None, language="system"):
 
 
 def gui_types():
-    from PyQt5.QtCore import Qt, QPointF, QRect, QRectF, QTimer, QProcess
-    from PyQt5.QtGui import QImage, QPixmap, QPainter, QCursor, QColor, QKeySequence
-    from PyQt5.QtWidgets import QApplication, QWidget, QMenu, QFileDialog, QMessageBox, QWidgetAction, QSlider, QLabel, QHBoxLayout
-    from PyQt5.QtNetwork import QLocalServer
+    from PySide6.QtCore import Qt, QPointF, QRect, QRectF, QTimer, QProcess
+    from PySide6.QtGui import QImage, QPixmap, QPainter, QCursor, QColor, QKeySequence
+    from PySide6.QtWidgets import QApplication, QWidget, QMenu, QFileDialog, QMessageBox, QWidgetAction, QSlider, QLabel, QHBoxLayout
+    from PySide6.QtNetwork import QLocalServer
     import tempfile
 
     class Pin:
@@ -125,7 +125,7 @@ def gui_types():
 
         def wheelEvent(self, event):
             modifiers = event.modifiers()
-            adjusted = modifiers & (Qt.AltModifier | Qt.ShiftModifier)
+            adjusted = modifiers & (Qt.KeyboardModifier.AltModifier | Qt.KeyboardModifier.ShiftModifier)
             angle = event.angleDelta()
             pixel = event.pixelDelta()
             # Qt/X11 can translate modifier+vertical-wheel into horizontal
@@ -136,7 +136,7 @@ def gui_types():
             if not delta:
                 event.ignore()
                 return
-            if event.modifiers() & Qt.AltModifier:
+            if event.modifiers() & Qt.KeyboardModifier.AltModifier:
                 self.set_opacity(self.opacity + delta * .05)
                 event.accept()
                 return
@@ -145,8 +145,8 @@ def gui_types():
                 return
             old = self.rect()
             old_scale = self.scale
-            pointer = QPointF(event.globalPos())
-            sensitivity = .035 if event.modifiers() & Qt.ShiftModifier else math.log(1.1)
+            pointer = event.globalPosition()
+            sensitivity = .035 if event.modifiers() & Qt.KeyboardModifier.ShiftModifier else math.log(1.1)
             self.scale = max(self.min_scale, min(self.max_scale,
                              self.scale * math.exp(max(-10., min(10., delta * sensitivity)))))
             # Preserve the exact source-image point beneath the cursor. All
@@ -194,7 +194,7 @@ def gui_types():
             row = QWidget(menu)
             layout = QHBoxLayout(row)
             label = QLabel(f'{tr("Opacity")} {self.opacity * 100:.0f}%', row)
-            slider = QSlider(Qt.Horizontal, row)
+            slider = QSlider(Qt.Orientation.Horizontal, row)
             slider.setRange(10, 100)
             slider.setValue(round(self.opacity * 100))
             slider.valueChanged.connect(lambda value: (self.set_opacity(value / 100),
@@ -210,7 +210,7 @@ def gui_types():
             menu.addSeparator()
             menu.addAction(tr('Close'), self.close)
             menu.addAction(tr('Close All Pins'), self.manager.close_all)
-            menu.exec_(point)
+            menu.exec(point)
 
         def close(self):
             if self in self.manager.pins:
@@ -228,14 +228,14 @@ def gui_types():
         def __init__(self, manager):
             # The overlay is not managed by the window manager: it must not
             # acquire fullscreen tiling, resize constraints or automatic moves.
-            super().__init__(None, Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint |
-                             Qt.X11BypassWindowManagerHint | Qt.NoDropShadowWindowHint)
+            super().__init__(None, Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint |
+                             Qt.WindowType.X11BypassWindowManagerHint | Qt.WindowType.NoDropShadowWindowHint)
             self.manager = manager
             self.active = None
             self.setWindowTitle('Image Pin')
-            self.setAttribute(Qt.WA_TranslucentBackground)
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
             self.setMouseTracking(True)
-            self.setFocusPolicy(Qt.StrongFocus)
+            self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             self.input_shape = None
             self.input_rectangles = None
             self.previous_focus = None
@@ -284,10 +284,10 @@ def gui_types():
 
         def paintEvent(self, event):
             painter = QPainter(self)
-            painter.setCompositionMode(QPainter.CompositionMode_Source)
-            painter.fillRect(event.rect(), Qt.transparent)
-            painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
-            painter.setRenderHint(QPainter.SmoothPixmapTransform)
+            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
+            painter.fillRect(event.rect(), Qt.GlobalColor.transparent)
+            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
             origin = self.geometry().topLeft()
             for pin in self.manager.pins:
                 target = pin.rect().translated(-origin.x(), -origin.y())
@@ -312,12 +312,12 @@ def gui_types():
 
         def update_cursor(self, pin=None):
             if pin is None or pin.locked:
-                self.setCursor(Qt.ArrowCursor)
+                self.setCursor(Qt.CursorShape.ArrowCursor)
             else:
-                self.setCursor(Qt.ClosedHandCursor if pin.anchor is not None else Qt.OpenHandCursor)
+                self.setCursor(Qt.CursorShape.ClosedHandCursor if pin.anchor is not None else Qt.CursorShape.OpenHandCursor)
 
         def mousePressEvent(self, event):
-            pin = self.hit(event.globalPos())
+            pin = self.hit(event.globalPosition())
             if not pin:
                 event.ignore()
                 return
@@ -330,27 +330,27 @@ def gui_types():
                 if focused != int(self.winId()):
                     self.previous_focus = focused
                 self.input_shape.focus(self.winId())
-            if event.button() == Qt.LeftButton:
-                pin.begin_drag(event.globalPos())
+            if event.button() == Qt.MouseButton.LeftButton:
+                pin.begin_drag(event.globalPosition())
             self.update_cursor(pin)
             self.manager.changed(pin.rect(), pin.rect())
             event.accept()
 
         def mouseMoveEvent(self, event):
             if self.active and self.active.anchor is not None:
-                self.active.drag(event.globalPos())
+                self.active.drag(event.globalPosition())
                 pin = self.active
             else:
-                pin = self.hit(event.globalPos())
+                pin = self.hit(event.globalPosition())
             self.update_cursor(pin)
 
         def mouseReleaseEvent(self, event):
             if self.active:
                 self.active.end_drag()
-            self.update_cursor(self.hit(event.globalPos()))
+            self.update_cursor(self.hit(event.globalPosition()))
 
         def wheelEvent(self, event):
-            pin = self.active if self.active and self.active.anchor is not None else self.hit(event.globalPos())
+            pin = self.active if self.active and self.active.anchor is not None else self.hit(event.globalPosition())
             if pin:
                 self.active = pin
                 pin.wheelEvent(event)
@@ -358,8 +358,8 @@ def gui_types():
                 event.ignore()
 
         def mouseDoubleClickEvent(self, event):
-            pin = self.hit(event.globalPos())
-            if pin and event.button() == Qt.LeftButton:
+            pin = self.hit(event.globalPosition())
+            if pin and event.button() == Qt.MouseButton.LeftButton:
                 pin.end_drag()
                 pin.reset_size()
                 self.update_cursor(pin)
@@ -374,10 +374,10 @@ def gui_types():
             if not self.active:
                 event.ignore()
                 return
-            if event.key() == Qt.Key_Escape:
+            if event.key() == Qt.Key.Key_Escape:
                 self.active.close()
                 self.release_focus()
-            elif event.matches(QKeySequence.Copy):
+            elif event.matches(QKeySequence.StandardKey.Copy):
                 QApplication.clipboard().setPixmap(self.active.image)
             else:
                 super().keyPressEvent(event)
@@ -520,8 +520,8 @@ def gui_types():
                                                           'Image Pin', message])
                 if started[0] if isinstance(started, tuple) else started:
                     return
-            box = QMessageBox(QMessageBox.Warning, 'Image Pin', message)
-            box.setAttribute(Qt.WA_DeleteOnClose)
+            box = QMessageBox(QMessageBox.Icon.Warning, 'Image Pin', message)
+            box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
             box.setModal(False)
             box.show()
             self.message_box = box
@@ -544,7 +544,7 @@ def gui_types():
             timer.start(120000)
 
         def capture_failed(self, process, error):
-            if error == QProcess.FailedToStart:
+            if error == QProcess.ProcessError.FailedToStart:
                 self.error(tr('Could not start GNOME Screenshot. Install gnome-screenshot and try again.'))
                 self.cleanup_capture(process)
 
@@ -621,7 +621,7 @@ def main():
     app.setQuitOnLastWindowClosed(False)
     manager = Manager()
     try:
-        app.exec_()
+        app.exec()
     finally:
         manager.server.close()
         if manager.daemon_lock:
@@ -634,7 +634,7 @@ def main():
             manager.capture_process.kill()
             manager.capture_process.waitForFinished(1000)
             manager.capture_dir.cleanup()
-        QLocalServer = __import__('PyQt5.QtNetwork', fromlist=['QLocalServer']).QLocalServer
+        QLocalServer = __import__('PySide6.QtNetwork', fromlist=['QLocalServer']).QLocalServer
         QLocalServer.removeServer(str(SOCKET))
 
 

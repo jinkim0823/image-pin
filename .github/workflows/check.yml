@@ -19,7 +19,7 @@ jobs:
           sudo apt-get update && sudo apt-get install -y
           xvfb xdotool libx11-6 libxext6 libgl1 libegl1 libx11-xcb1
           libxcb-xinerama0 libxkbcommon-x11-0 libxcb-render-util0
-          libxcb-image0 libxcb-keysyms1 libxcb-icccm4
+          libxcb-image0 libxcb-keysyms1 libxcb-icccm4 libxcb-cursor0
       - run: uv sync --locked
       - run: npm ci --prefix extension --no-audit --no-fund
       - name: Unit, installer, manifest and build checks

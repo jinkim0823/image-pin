@@ -19,8 +19,8 @@
 
 ## Validation
 
-- 20 unit/render/interaction/language/lifecycle tests passed locally, including
-  capture placement, reverse drags, snapshot cropping/scaling and cancellation.
+- 24 unit/render/interaction/language/lifecycle tests passed locally on PySide6
+  6.11.2 (Qt 6), including notifications, Wayland placement, pin frame, capture placement, reverse drags, snapshot cropping/scaling and cancellation.
 - Installation/removal regression passed from a path with spaces; unrelated
   launcher files were preserved.
 - TypeScript typecheck, Vicinae manifest lint and isolated-output build passed.

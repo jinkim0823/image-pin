@@ -5,9 +5,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
-from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QEvent
-from PyQt5.QtGui import QPixmap, QColor, QMouseEvent, QWheelEvent, QCursor
-from PyQt5.QtTest import QTest
+from PySide6.QtCore import Qt, QPoint, QPointF, QRect, QEvent
+from PySide6.QtGui import QPixmap, QColor, QMouseEvent, QWheelEvent, QCursor
+from PySide6.QtTest import QTest
 from image_pin import gui_types
 
 Application, Manager, Pin = gui_types()
@@ -36,20 +36,20 @@ class PinTests(unittest.TestCase):
         app.processEvents()
         return pin
 
-    def wheel(self, pin, delta=120, point=None, modifiers=Qt.NoModifier):
+    def wheel(self, pin, delta=120, point=None, modifiers=Qt.KeyboardModifier.NoModifier):
         point = QPointF(point or pin.center)
         origin = self.manager.surface.geometry().topLeft()
         event = QWheelEvent(point - QPointF(origin), point, QPoint(), QPoint(0, delta),
-                            Qt.NoButton, modifiers, Qt.NoScrollPhase, False)
+                            Qt.MouseButton.NoButton, modifiers, Qt.ScrollPhase.NoScrollPhase, False)
         self.manager.surface.wheelEvent(event)
 
     def mouse(self, kind, point, button, buttons):
         surface = self.manager.surface
         point = QPointF(point)
-        event = QMouseEvent(kind, point - QPointF(surface.pos()), point, button, buttons, Qt.NoModifier)
-        {QEvent.MouseButtonPress: surface.mousePressEvent,
-         QEvent.MouseMove: surface.mouseMoveEvent,
-         QEvent.MouseButtonRelease: surface.mouseReleaseEvent}[kind](event)
+        event = QMouseEvent(kind, point - QPointF(surface.pos()), point, button, buttons, Qt.KeyboardModifier.NoModifier)
+        {QEvent.Type.MouseButtonPress: surface.mousePressEvent,
+         QEvent.Type.MouseMove: surface.mouseMoveEvent,
+         QEvent.Type.MouseButtonRelease: surface.mouseReleaseEvent}[kind](event)
 
     def test_wheel_does_not_change_native_geometry_or_center(self):
         pin = self.pin()
@@ -93,19 +93,19 @@ class PinTests(unittest.TestCase):
         native = self.manager.surface.geometry()
         press = pin.center + QPointF(20, 15)
         source = self.source_at(pin, press)
-        self.mouse(QEvent.MouseButtonPress, press, Qt.LeftButton, Qt.LeftButton)
+        self.mouse(QEvent.Type.MouseButtonPress, press, Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton)
         self.wheel(pin, point=press)
         self.assertAlmostEqual(pin.scale, 1.1)
         self.assert_point_close(self.source_at(pin, press), source)
         self.assert_point_close(pin.center + pin.anchor, press)
         moved = press + QPointF(40, 30)
-        self.mouse(QEvent.MouseMove, moved, Qt.NoButton, Qt.LeftButton)
+        self.mouse(QEvent.Type.MouseMove, moved, Qt.MouseButton.NoButton, Qt.MouseButton.LeftButton)
         self.assert_point_close(self.source_at(pin, moved), source)
         self.wheel(pin, -120, point=moved)
         self.assertAlmostEqual(pin.scale, 1.)
         self.assert_point_close(self.source_at(pin, moved), source)
         self.assertEqual(self.manager.surface.geometry(), native)
-        self.mouse(QEvent.MouseButtonRelease, moved, Qt.LeftButton, Qt.NoButton)
+        self.mouse(QEvent.Type.MouseButtonRelease, moved, Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton)
         self.assertIsNone(pin.anchor)
 
     def test_lock_blocks_resize_and_drag(self):
@@ -122,7 +122,7 @@ class PinTests(unittest.TestCase):
         self.wheel(pin)
         self.assertAlmostEqual(pin.scale, 1.1)
         pin.reset_size()
-        self.wheel(pin, modifiers=Qt.ShiftModifier)
+        self.wheel(pin, modifiers=Qt.KeyboardModifier.ShiftModifier)
         self.assertGreater(pin.scale, 1.)
         self.assertLess(pin.scale, 1.1)
         self.wheel(pin, -120000)
@@ -157,7 +157,7 @@ class PinTests(unittest.TestCase):
         second.center = QPointF(first.center)
         self.assertIs(self.manager.surface.hit(first.center), second)
         self.manager.surface.active = second
-        QTest.keyClick(self.manager.surface, Qt.Key_Escape)
+        QTest.keyClick(self.manager.surface, Qt.Key.Key_Escape)
         self.assertEqual(self.manager.pins, [first])
         self.assertIs(self.manager.surface.hit(first.center), first)
         first.close()
@@ -167,7 +167,7 @@ class PinTests(unittest.TestCase):
         pin = self.pin()
         original = pin.image.toImage()
         rect, native = pin.rect(), self.manager.surface.geometry()
-        self.wheel(pin, -120, modifiers=Qt.AltModifier)
+        self.wheel(pin, -120, modifiers=Qt.KeyboardModifier.AltModifier)
         self.assertAlmostEqual(pin.opacity, .95)
         self.assertEqual(pin.rect(), rect)
         self.assertEqual(self.manager.surface.geometry(), native)
@@ -181,7 +181,7 @@ class PinTests(unittest.TestCase):
         pin.set_opacity(2)
         self.assertEqual(pin.opacity, 1.)
         pin.toggle_lock(True)
-        self.wheel(pin, -120, modifiers=Qt.AltModifier)
+        self.wheel(pin, -120, modifiers=Qt.KeyboardModifier.AltModifier)
         self.assertAlmostEqual(pin.opacity, .95)
         self.assertEqual(pin.rect(), rect)
 
@@ -190,9 +190,9 @@ class PinTests(unittest.TestCase):
         native = self.manager.surface.geometry()
         point = pin.center
         surface = self.manager.surface
-        for modifiers in (Qt.NoModifier, Qt.AltModifier, Qt.ShiftModifier):
+        for modifiers in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.AltModifier, Qt.KeyboardModifier.ShiftModifier):
             event = QWheelEvent(point - QPointF(surface.pos()), point, QPoint(), QPoint(-120, 0),
-                                Qt.NoButton, modifiers, Qt.NoScrollPhase, False)
+                                Qt.MouseButton.NoButton, modifiers, Qt.ScrollPhase.NoScrollPhase, False)
             surface.wheelEvent(event)
         self.assertAlmostEqual(pin.opacity, .95)
         self.assertGreater(pin.scale, .95)
@@ -200,8 +200,8 @@ class PinTests(unittest.TestCase):
         self.assertEqual(surface.geometry(), native)
 
     def test_opacity_menu_slider_updates_pin(self):
-        from PyQt5.QtCore import QTimer
-        from PyQt5.QtWidgets import QMenu, QSlider
+        from PySide6.QtCore import QTimer
+        from PySide6.QtWidgets import QMenu, QSlider
         pin = self.pin()
         result = []
         def operate_menu():
@@ -231,7 +231,7 @@ class PinTests(unittest.TestCase):
 
     def test_daemon_exclusion_preserves_existing_socket(self):
         import image_pin
-        from PyQt5.QtNetwork import QLocalServer
+        from PySide6.QtNetwork import QLocalServer
         with TemporaryDirectory() as tmp:
             runtime = Path(tmp)
             path = runtime / 'image-pin.sock'
@@ -280,7 +280,7 @@ class PinTests(unittest.TestCase):
         self.assertEqual(len(self.manager.pins), 1)
 
     def test_capture_consumes_and_removes_temporary_file(self):
-        from PyQt5.QtCore import QProcess
+        from PySide6.QtCore import QProcess
         directory = TemporaryDirectory()
         destination = Path(directory.name) / 'capture.png'
         self.image.save(str(destination))
@@ -306,10 +306,10 @@ class PinTests(unittest.TestCase):
                 self.manager.select_capture(snapshot)
                 selector = self.manager.capture_selector
                 with patch.object(QCursor, 'pos', return_value=QPoint(700, 500)):
-                    press = QMouseEvent(QEvent.MouseButtonPress, start, start,
-                                        Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
-                    release = QMouseEvent(QEvent.MouseButtonRelease, end, end,
-                                          Qt.LeftButton, Qt.NoButton, Qt.NoModifier)
+                    press = QMouseEvent(QEvent.Type.MouseButtonPress, start, start,
+                                        Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
+                    release = QMouseEvent(QEvent.Type.MouseButtonRelease, end, end,
+                                          Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier)
                     selector.mousePressEvent(press)
                     selector.mouseReleaseEvent(release)
                 pin = self.manager.pins[-1]
@@ -321,7 +321,7 @@ class PinTests(unittest.TestCase):
 
     def test_error_uses_detached_notification_without_blocking(self):
         import image_pin
-        from PyQt5.QtCore import QProcess
+        from PySide6.QtCore import QProcess
         with patch.object(image_pin.shutil, 'which', return_value='/usr/bin/notify-send'), \
              patch.object(QProcess, 'startDetached', return_value=True) as start:
             self.manager.error('test message')
@@ -373,10 +373,10 @@ class PinTests(unittest.TestCase):
         selected = []
         selector.selected.connect(lambda *args: selected.append(args))
         start, end = QPoint(40, 60), QPoint(-80, -30)
-        selector.mousePressEvent(QMouseEvent(QEvent.MouseButtonPress, start, start,
-                                            Qt.LeftButton, Qt.LeftButton, Qt.NoModifier))
-        selector.mouseReleaseEvent(QMouseEvent(QEvent.MouseButtonRelease, end, end,
-                                              Qt.LeftButton, Qt.NoButton, Qt.NoModifier))
+        selector.mousePressEvent(QMouseEvent(QEvent.Type.MouseButtonPress, start, start,
+                                            Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier))
+        selector.mouseReleaseEvent(QMouseEvent(QEvent.Type.MouseButtonRelease, end, end,
+                                              Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier))
         self.assertEqual(len(selected), 1)
         image, origin, scale = selected[0]
         self.assertEqual(origin, QPointF(-80, -30))
@@ -396,10 +396,10 @@ class PinTests(unittest.TestCase):
         # Mapping must not change the visible desktop before any drag.
         self.assertEqual(selector.grab().toImage().pixelColor(10, 10), QColor('#4080c0'))
         start, end = QPoint(50, 50), QPoint(120, 100)
-        selector.mousePressEvent(QMouseEvent(QEvent.MouseButtonPress, start, start,
-                                            Qt.LeftButton, Qt.LeftButton, Qt.NoModifier))
-        selector.mouseMoveEvent(QMouseEvent(QEvent.MouseMove, end, end,
-                                           Qt.NoButton, Qt.LeftButton, Qt.NoModifier))
+        selector.mousePressEvent(QMouseEvent(QEvent.Type.MouseButtonPress, start, start,
+                                            Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier))
+        selector.mouseMoveEvent(QMouseEvent(QEvent.Type.MouseMove, end, end,
+                                           Qt.MouseButton.NoButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier))
         pixels = selector.grab().toImage()
         self.assertNotEqual(pixels.pixelColor(10, 10), QColor('#4080c0'))
         self.assertEqual(pixels.pixelColor(80, 75), QColor('#4080c0'))
@@ -409,7 +409,7 @@ class PinTests(unittest.TestCase):
     def test_cancel_own_selector_creates_no_pin(self):
         self.manager.select_capture(self.image)
         selector = self.manager.capture_selector
-        QTest.keyClick(selector, Qt.Key_Escape)
+        QTest.keyClick(selector, Qt.Key.Key_Escape)
         self.assertIsNone(self.manager.capture_selector)
         self.assertFalse(self.manager.pins)
         self.manager.select_capture(self.image)
@@ -418,7 +418,7 @@ class PinTests(unittest.TestCase):
         self.assertFalse(self.manager.pins)
 
     def test_capture_cancel_leaves_no_pin(self):
-        from PyQt5.QtCore import QProcess
+        from PySide6.QtCore import QProcess
         directory = TemporaryDirectory()
         process = QProcess()
         self.manager.capture_dir = directory

@@ -7,10 +7,10 @@ import os
 os.environ['QT_QPA_PLATFORM'] = 'xcb'
 import ctypes as C
 import subprocess
-from PyQt5.QtCore import Qt, QPoint, QPointF
-from PyQt5.QtGui import QPixmap, QColor, QWheelEvent
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtTest import QTest
+from PySide6.QtCore import Qt, QPoint, QPointF
+from PySide6.QtGui import QPixmap, QColor, QWheelEvent
+from PySide6.QtWidgets import QWidget
+from PySide6.QtTest import QTest
 from image_pin import gui_types
 
 Application, Manager, _ = gui_types()
@@ -23,8 +23,8 @@ class Probe(QWidget):
         # Keep the owned fixture above pre-existing pinned images, while the
         # new test surface is raised above it. No real application receives
         # simulated clicks even when the user has pins open during testing.
-        super().__init__(None, Qt.Tool | Qt.FramelessWindowHint |
-                         Qt.WindowStaysOnTopHint | Qt.X11BypassWindowManagerHint)
+        super().__init__(None, Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint |
+                         Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.X11BypassWindowManagerHint)
         self.setWindowTitle('Image Pin isolated input test')
         self.setGeometry(200, 200, 360, 240)
         self.setStyleSheet('background: #253047;')
@@ -73,7 +73,7 @@ try:
     for delta in [120] * 12 + [-120] * 12:
         point = pin.center
         wheel = QWheelEvent(point - QPointF(surface.pos()), point, QPoint(), QPoint(0, delta),
-                            Qt.NoButton, Qt.NoModifier, Qt.NoScrollPhase, False)
+                            Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier, Qt.ScrollPhase.NoScrollPhase, False)
         surface.wheelEvent(wheel)
         QTest.qWait(8)
         x11.XSync(shape.display, 0)

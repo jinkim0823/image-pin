@@ -1,18 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """Select a region from a frozen screenshot and keep its desktop coordinates."""
-from PyQt5.QtCore import Qt, QPointF, QRect, QRectF, pyqtSignal
-from PyQt5.QtGui import QColor, QPainter, QPen, QPixmap
-from PyQt5.QtWidgets import QWidget
+from PySide6.QtCore import Qt, QPointF, QRect, QRectF, Signal
+from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import QWidget
 
 
 class CaptureSelector(QWidget):
-    selected = pyqtSignal(object, object, float)
-    cancelled = pyqtSignal()
+    selected = Signal(object, object, float)
+    cancelled = Signal()
 
     def __init__(self, snapshot, desktop):
-        super().__init__(None, Qt.Tool | Qt.FramelessWindowHint |
-                         Qt.WindowStaysOnTopHint | Qt.X11BypassWindowManagerHint |
-                         Qt.NoDropShadowWindowHint)
+        super().__init__(None, Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint |
+                         Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.X11BypassWindowManagerHint |
+                         Qt.WindowType.NoDropShadowWindowHint)
         self.snapshot = snapshot
         self.desktop = QRect(desktop)
         self.start = None
@@ -20,9 +20,9 @@ class CaptureSelector(QWidget):
         self.done = False
         self.setWindowTitle('Image Pin — Capture')
         self.setGeometry(desktop)
-        self.setCursor(Qt.CrossCursor)
+        self.setCursor(Qt.CursorShape.CrossCursor)
         self.setMouseTracking(True)
-        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
     def selection(self):
         if self.start is None:
@@ -51,21 +51,21 @@ class CaptureSelector(QWidget):
         painter.drawRect(selected.adjusted(.5, .5, -.5, -.5))
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.start = self.end = QPointF(event.globalPos())
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.start = self.end = event.globalPosition()
             self.update()
-        elif event.button() == Qt.RightButton:
+        elif event.button() == Qt.MouseButton.RightButton:
             self.cancel()
 
     def mouseMoveEvent(self, event):
         if self.start is not None:
-            self.end = QPointF(event.globalPos())
+            self.end = event.globalPosition()
             self.update()
 
     def mouseReleaseEvent(self, event):
-        if event.button() != Qt.LeftButton or self.start is None or self.done:
+        if event.button() != Qt.MouseButton.LeftButton or self.start is None or self.done:
             return
-        self.end = QPointF(event.globalPos())
+        self.end = event.globalPosition()
         selected = self.selection()
         if selected.width() < 2 or selected.height() < 2:
             self.cancel()
@@ -87,7 +87,7 @@ class CaptureSelector(QWidget):
         self.selected.emit(image, selected.topLeft(), initial_scale)
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape:
+        if event.key() == Qt.Key.Key_Escape:
             self.cancel()
         else:
             super().keyPressEvent(event)

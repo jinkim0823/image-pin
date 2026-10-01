@@ -8,6 +8,12 @@ for tool in uv npm node vicinae gnome-screenshot; do
         exit 1
     fi
 done
+# Qt 6's X11 platform plugin cannot load without libxcb-cursor.
+LDCONFIG="$(command -v ldconfig || printf /sbin/ldconfig)"
+if ! "$LDCONFIG" -p 2>/dev/null | grep -q 'libxcb-cursor\.so\.0'; then
+    printf 'Missing library: libxcb-cursor0 (required by Qt 6). See README.md for installation.\n' >&2
+    exit 1
+fi
 INSTALL_BIN="${IMAGE_PIN_BIN_DIR:-$HOME/.local/bin}"
 mkdir -p -- "$INSTALL_BIN"
 if [[ -e "$INSTALL_BIN/image-pin" || -L "$INSTALL_BIN/image-pin" ]]; then

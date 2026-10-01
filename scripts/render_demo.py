@@ -9,8 +9,8 @@ import tempfile
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT))
-from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF
-from PyQt5.QtGui import QPixmap, QPainter, QColor, QFont, QImage, QWheelEvent, QPen
+from PySide6.QtCore import Qt, QPoint, QPointF, QRectF
+from PySide6.QtGui import QPixmap, QPainter, QColor, QFont, QImage, QWheelEvent, QPen
 from image_pin import gui_types
 
 Application, Manager, _ = gui_types()
@@ -24,9 +24,9 @@ assets.mkdir(parents=True, exist_ok=True)
 card = QPixmap(420, 245)
 card.fill(QColor('#172537'))
 painter = QPainter(card)
-painter.setRenderHint(QPainter.Antialiasing)
+painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 painter.setPen(QColor('#eef3ff'))
-painter.setFont(QFont('sans', 17, QFont.Bold))
+painter.setFont(QFont('sans', 17, QFont.Weight.Bold))
 painter.drawText(24, 36, 'Reference curve')
 painter.setPen(QPen(QColor('#34475b'), 1))
 for x in range(35, 410, 35):
@@ -45,17 +45,17 @@ manager.changed()
 
 # A 512px icon for the independent MIT launcher wrapper.
 icon = QPixmap(512,512)
-icon.fill(Qt.transparent)
+icon.fill(Qt.GlobalColor.transparent)
 p = QPainter(icon)
-p.setRenderHint(QPainter.Antialiasing)
-p.setPen(Qt.NoPen)
+p.setRenderHint(QPainter.RenderHint.Antialiasing)
+p.setPen(Qt.PenStyle.NoPen)
 p.setBrush(QColor('#172537'))
 p.drawRoundedRect(QRectF(0,0,512,512), 104,104)
 p.setBrush(QColor('#426794'))
 p.drawRoundedRect(QRectF(98,108,236,218), 25,25)
 p.setBrush(QColor('#f2f5ff'))
 p.drawRoundedRect(QRectF(163,173,251,230), 25,25)
-p.setPen(QPen(QColor('#ef9862'),16,Qt.SolidLine,Qt.RoundCap))
+p.setPen(QPen(QColor('#ef9862'),16,Qt.PenStyle.SolidLine,Qt.PenCapStyle.RoundCap))
 p.drawLine(213,254,267,220)
 p.drawLine(267,220,316,296)
 p.drawLine(316,296,367,251)
@@ -80,8 +80,8 @@ def scroll_to(total):
     delta = target - wheel_total
     if delta:
         wheel = QWheelEvent(pointer,pointer,QPoint(),QPoint(0,delta),
-                            Qt.LeftButton if holding else Qt.NoButton,
-                            Qt.NoModifier,Qt.NoScrollPhase,False)
+                            Qt.MouseButton.LeftButton if holding else Qt.MouseButton.NoButton,
+                            Qt.KeyboardModifier.NoModifier,Qt.ScrollPhase.NoScrollPhase,False)
         pin.wheelEvent(wheel)
     wheel_total = target
 
@@ -123,18 +123,18 @@ with tempfile.TemporaryDirectory(prefix='image-pin-demo-') as directory:
                 pin.end_drag()
                 holding = False
         app.processEvents()
-        frame = QImage(900,540,QImage.Format_ARGB32)
+        frame = QImage(900,540,QImage.Format.Format_ARGB32)
         frame.fill(QColor('#0c1420'))
         p = QPainter(frame)
         p.setPen(QColor('#f2f5ff'))
-        p.setFont(QFont('sans',25,QFont.Bold)); p.drawText(38,53,'Image Pin')
+        p.setFont(QFont('sans',25,QFont.Weight.Bold)); p.drawText(38,53,'Image Pin')
         p.setFont(QFont('sans',14)); p.setPen(QColor('#a8b9cf')); p.drawText(38,85,title)
-        p.setPen(Qt.NoPen); p.setBrush(QColor('#253248')); p.drawRoundedRect(QRectF(90,120,720,330),12,12)
+        p.setPen(Qt.PenStyle.NoPen); p.setBrush(QColor('#253248')); p.drawRoundedRect(QRectF(90,120,720,330),12,12)
         p.setPen(QColor('#a6bbd6')); p.setFont(QFont('monospace',12))
         for row,text in enumerate(['// Keep a reference above your work', '', 'const cursor = { x: 500, y: 300 };', 'const opacity = 0.65;', '', '// Transparent areas remain clickable']):
             p.drawText(115,163+row*36,text)
         p.drawPixmap(0,0,manager.surface.grab())
-        p.setPen(QPen(QColor('#ffffff'),2)); p.setBrush(Qt.NoBrush); p.drawEllipse(pointer,6,6)
+        p.setPen(QPen(QColor('#ffffff'),2)); p.setBrush(Qt.BrushStyle.NoBrush); p.drawEllipse(pointer,6,6)
         p.setPen(QColor('#7e92ae')); p.setFont(QFont('sans',11)); p.drawText(38,505,'Rendered preview · scripted input · actual overlay renderer')
         p.end()
         frame.save(str(frames/f'{index:04d}.png'))
