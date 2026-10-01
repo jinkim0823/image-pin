@@ -17,9 +17,26 @@ Opacity does not change the input footprint. Identical input regions are cached
 so opacity-only changes need no shape request.
 
 On XWayland, the surface uses override-redirect to avoid window-manager tiling,
-automatic placement and resize constraints. Clicking a pin explicitly focuses
-the surface, enabling Ctrl+C and Esc. Closing the last pin hides the surface.
-The helper remains resident until explicitly stopped.
+automatic placement and resize constraints. Closing the last pin hides the
+surface. The helper remains resident until explicitly stopped.
+
+## Keyboard focus
+
+The window manager never focuses override-redirect windows. Under GNOME
+Wayland, setting X11 focus on the surface alone is not enough: the compositor
+keeps keyboard focus on the last Wayland app, so Escape, Ctrl+C and the
+modifiers for Alt/Shift+wheel never reach XWayland. Clicking a pin therefore
+shows a 1 px transparent, click-through **key proxy**, an ordinary managed
+window that asks the window manager for activation and forwards key presses to
+the surface or the capture selector. Escape, closing the last pin, or focusing
+another window hides it, and the window manager returns focus to the most
+recently used app.
+
+GNOME's focus-stealing prevention judges activation against real user input.
+XTest-generated clicks bypass the compositor, so the native desktop test cannot
+activate the proxy under GNOME and delivers Escape through it directly; real
+mouse use was checked manually. On Xvfb (no window manager) the test exercises
+the real X11 focus path.
 
 ## Capture coordinates
 

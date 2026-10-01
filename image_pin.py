@@ -230,7 +230,8 @@ def gui_types():
                     surface.active = None
                 self.manager.changed(old, None)
                 if not self.manager.pins:
-                    surface.hide_when_unfocused()
+                    surface.hide()
+                    self.manager.key_proxy.release()
 
     class Surface(QWidget):
         def __init__(self, manager):
@@ -246,8 +247,6 @@ def gui_types():
             self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             self.input_shape = None
             self.input_rectangles = None
-            self.previous_focus = None
-            self.hide_pending = False
             if QApplication.platformName() == 'xcb':
                 from x11_input import InputShape
                 self.input_shape = InputShape()
@@ -309,49 +308,6 @@ def gui_types():
                     painter.setPen(QColor(128, 128, 128, 200))
                     painter.drawRect(target.adjusted(-.5, -.5, .5, .5))
 
-        def remember_focus(self):
-            if self.input_shape:
-                focused = self.input_shape.current_focus()
-                if focused != int(self.winId()):
-                    self.previous_focus = focused
-
-        def enterEvent(self, event):
-            # Qt 6 may activate the surface before delivering a button press,
-            # so record the user's window when the pointer reaches a pin.
-            self.remember_focus()
-            super().enterEvent(event)
-
-        def release_focus(self):
-            # Return keyboard focus to the window used before a pin was clicked.
-            restored = False
-            if self.input_shape and self.previous_focus is not None:
-                if self.input_shape.current_focus() == int(self.winId()):
-                    self.input_shape.restore_focus(self.previous_focus)
-                    restored = True
-                self.previous_focus = None
-            return restored
-
-        def hide_when_unfocused(self):
-            # Unmapping the focused surface makes the window manager pick its
-            # own focus target, racing the restore. Hand focus back first and
-            # unmap once it has left; the empty surface is already invisible
-            # and click-through meanwhile.
-            if self.release_focus():
-                self.hide_pending = True
-                QTimer.singleShot(300, self.finish_hide)
-            else:
-                self.hide()
-
-        def finish_hide(self):
-            if self.hide_pending and not self.manager.pins:
-                self.hide()
-            self.hide_pending = False
-
-        def focusOutEvent(self, event):
-            super().focusOutEvent(event)
-            if self.hide_pending:
-                self.finish_hide()
-
         def hit(self, point):
             return next((pin for pin in reversed(self.manager.pins) if pin.rect().contains(QPointF(point))), None)
 
@@ -370,9 +326,7 @@ def gui_types():
             self.manager.pins.remove(pin)
             self.manager.pins.append(pin)
             self.setFocus()
-            if self.input_shape:
-                self.remember_focus()
-                self.input_shape.focus(self.winId())
+            self.manager.key_proxy.take(self, event.globalPosition().toPoint())
             if event.button() == Qt.MouseButton.LeftButton:
                 pin.begin_drag(event.globalPosition())
             self.update_cursor(pin)
@@ -419,11 +373,70 @@ def gui_types():
                 return
             if event.key() == Qt.Key.Key_Escape:
                 self.active.close()
-                self.release_focus()
+                self.manager.key_proxy.release()
             elif event.matches(QKeySequence.StandardKey.Copy):
                 QApplication.clipboard().setPixmap(self.active.image)
             else:
                 super().keyPressEvent(event)
+
+    class KeyProxy(QWidget):
+        """Invisible managed window that obtains keyboard focus for pins.
+
+        Pins and the capture selector are override-redirect, so the window
+        manager never focuses them. Under GNOME Wayland, setting X11 focus
+        alone leaves the keyboard with the last Wayland app: Escape and the
+        modifiers for Alt/Shift+wheel are then never seen. This 1 px
+        transparent window asks the window manager for focus instead and
+        forwards key presses. Hiding it lets the window manager return focus
+        to the previously used app.
+        """
+        def __init__(self, input_shape):
+            super().__init__(None, Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint |
+                             Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.NoDropShadowWindowHint)
+            self.setWindowTitle('Image Pin')
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+            self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            self.input_shape = input_shape
+            self.target = None
+            self.resize(1, 1)
+            if input_shape:
+                # Never intercept pointer input, even for its single pixel.
+                input_shape.set(self.winId(), [])
+
+        def take(self, target, point):
+            self.target = target
+            if not self.input_shape:
+                target.setFocus()
+                return
+            self.move(point)
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            # Without a window manager (plain X11, Xvfb) nobody answers the
+            # activation request, so also set X11 focus directly.
+            self.input_shape.focus(self.winId())
+
+        def retarget(self, target):
+            if self.target is not None:
+                self.target = target
+
+        def release(self):
+            self.target = None
+            if self.isVisible():
+                self.hide()
+
+        def keyPressEvent(self, event):
+            if self.target is not None:
+                self.target.keyPressEvent(event)
+            else:
+                event.ignore()
+
+        def focusOutEvent(self, event):
+            super().focusOutEvent(event)
+            # A pin's context menu takes focus temporarily; anything else
+            # means the user moved to another window.
+            if event.reason() != Qt.FocusReason.PopupFocusReason and not self.isActiveWindow():
+                self.release()
 
     class Manager:
         def __init__(self, serve=True):
@@ -443,6 +456,7 @@ def gui_types():
                     self.daemon_lock.close()
                     raise RuntimeError('Image Pin is already running') from error
             self.surface = Surface(self)
+            self.key_proxy = KeyProxy(self.surface.input_shape)
             if serve:
                 # Starts are serialized by launch(); an absent listener is stale.
                 QLocalServer.removeServer(str(SOCKET))
@@ -517,7 +531,6 @@ def gui_types():
                 return
             pin = Pin(image, self, origin, initial_scale)
             self.pins.append(pin)
-            self.surface.hide_pending = False
             self.surface.active = pin
             self.changed()
             self.surface.show()
@@ -620,18 +633,19 @@ def gui_types():
             selector.cancelled.connect(self.cleanup_selector)
             selector.show()
             selector.raise_()
-            selector.activateWindow()
-            selector.setFocus()
-            if self.surface.input_shape:
-                self.surface.input_shape.focus(selector.winId())
+            self.key_proxy.take(selector, QCursor.pos())
 
         def capture_selected(self, image, origin, initial_scale):
-            self.cleanup_selector()
+            self.cleanup_selector(keep_focus=True)
             self.pin(image, origin, initial_scale)
+            # Keep keyboard focus for the new pin (Escape closes it).
+            self.key_proxy.retarget(self.surface)
 
-        def cleanup_selector(self):
+        def cleanup_selector(self, keep_focus=False):
             selector = self.capture_selector
             self.capture_selector = None
+            if selector and not keep_focus:
+                self.key_proxy.release()
             if selector:
                 selector.hide()
                 selector.deleteLater()

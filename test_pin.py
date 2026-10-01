@@ -216,6 +216,25 @@ class PinTests(unittest.TestCase):
         pin.menu(pin.center.toPoint())
         self.assertEqual(result, [.4])
 
+    def test_key_proxy_forwards_keys_and_releases_focus(self):
+        proxy = self.manager.key_proxy
+        first, second = self.pin(), self.pin()
+        self.manager.surface.active = second
+        proxy.take(self.manager.surface, QPoint(0, 0))
+        QTest.keyClick(proxy, Qt.Key.Key_Escape)
+        self.assertEqual(self.manager.pins, [first])
+        self.assertIsNone(proxy.target)
+        # Without a target, keys are not swallowed or forwarded anywhere.
+        QTest.keyClick(proxy, Qt.Key.Key_Escape)
+        self.assertEqual(self.manager.pins, [first])
+        # The capture selector receives keys through the proxy as well.
+        self.manager.select_capture(self.image)
+        self.assertIs(proxy.target, self.manager.capture_selector)
+        QTest.keyClick(proxy, Qt.Key.Key_Escape)
+        self.assertIsNone(self.manager.capture_selector)
+        self.assertIsNone(proxy.target)
+        self.assertEqual(self.manager.pins, [first])
+
     def test_menu_ignores_leave_while_pointer_is_inside(self):
         from PySide6.QtCore import QEvent, QTimer
         from PySide6.QtWidgets import QApplication

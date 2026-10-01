@@ -16,7 +16,10 @@
 - The installer lists every missing prerequisite with a ready-to-run
   `apt` command instead of stopping at the first one.
 - `install.sh --helper-only` installs the helper without Node.js or Vicinae.
-- Escape returns keyboard focus to the previously focused window.
+- Keyboard input (Escape, Ctrl+C, Alt/Shift+wheel) works after switching to a
+  Wayland app and back, through a managed key-proxy window. Escape returns
+  focus to the previously used app.
+- The pin menu keeps its hover highlight when XWayland sends a spurious Leave.
 - Errors use non-blocking desktop notifications.
 - Under Wayland, clipboard and file pins open near the screen center instead
   of a stale XWayland pointer position.

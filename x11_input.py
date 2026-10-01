@@ -3,7 +3,7 @@
 import ctypes as C
 
 # Xlib's default handler exits the process on any protocol error, such as
-# restoring focus to a window that closed meanwhile. Ignore errors instead.
+# focusing a window that closed meanwhile. Ignore errors instead.
 _ErrorHandler = C.CFUNCTYPE(C.c_int, C.c_void_p, C.c_void_p)
 _ignore_errors = _ErrorHandler(lambda display, event: 0)
 
@@ -22,7 +22,6 @@ class InputShape:
         self.x11.XFlush.argtypes = [C.c_void_p]
         self.x11.XCloseDisplay.argtypes = [C.c_void_p]
         self.x11.XSetInputFocus.argtypes = [C.c_void_p, C.c_ulong, C.c_int, C.c_ulong]
-        self.x11.XGetInputFocus.argtypes = [C.c_void_p, C.POINTER(C.c_ulong), C.POINTER(C.c_int)]
         self.x11.XSetErrorHandler.argtypes = [_ErrorHandler]
         self.x11.XSetErrorHandler.restype = C.c_void_p
         self.x11.XSetErrorHandler(_ignore_errors)
@@ -59,17 +58,6 @@ class InputShape:
 
     def focus(self, window):
         self.x11.XSetInputFocus(self.display, int(window), 1, 0)
-        self.x11.XFlush(self.display)
-
-    def current_focus(self):
-        window, revert = C.c_ulong(), C.c_int()
-        self.x11.XGetInputFocus(self.display, C.byref(window), C.byref(revert))
-        return window.value
-
-    def restore_focus(self, window):
-        # None (0) and PointerRoot (1) are not windows; PointerRoot lets the
-        # window manager choose. A window closed meanwhile is ignored above.
-        self.x11.XSetInputFocus(self.display, window if window > 1 else 1, 1, 0)
         self.x11.XFlush(self.display)
 
     def close(self):
