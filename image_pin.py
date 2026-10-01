@@ -221,8 +221,7 @@ def gui_types():
                     surface.active = None
                 self.manager.changed(old, None)
                 if not self.manager.pins:
-                    surface.release_focus()
-                    surface.hide()
+                    surface.hide_when_unfocused()
 
     class Surface(QWidget):
         def __init__(self, manager):
@@ -239,6 +238,7 @@ def gui_types():
             self.input_shape = None
             self.input_rectangles = None
             self.previous_focus = None
+            self.hide_pending = False
             if QApplication.platformName() == 'xcb':
                 from x11_input import InputShape
                 self.input_shape = InputShape()
@@ -300,12 +300,48 @@ def gui_types():
                     painter.setPen(QColor(128, 128, 128, 200))
                     painter.drawRect(target.adjusted(-.5, -.5, .5, .5))
 
+        def remember_focus(self):
+            if self.input_shape:
+                focused = self.input_shape.current_focus()
+                if focused != int(self.winId()):
+                    self.previous_focus = focused
+
+        def enterEvent(self, event):
+            # Qt 6 may activate the surface before delivering a button press,
+            # so record the user's window when the pointer reaches a pin.
+            self.remember_focus()
+            super().enterEvent(event)
+
         def release_focus(self):
             # Return keyboard focus to the window used before a pin was clicked.
+            restored = False
             if self.input_shape and self.previous_focus is not None:
                 if self.input_shape.current_focus() == int(self.winId()):
                     self.input_shape.restore_focus(self.previous_focus)
+                    restored = True
                 self.previous_focus = None
+            return restored
+
+        def hide_when_unfocused(self):
+            # Unmapping the focused surface makes the window manager pick its
+            # own focus target, racing the restore. Hand focus back first and
+            # unmap once it has left; the empty surface is already invisible
+            # and click-through meanwhile.
+            if self.release_focus():
+                self.hide_pending = True
+                QTimer.singleShot(300, self.finish_hide)
+            else:
+                self.hide()
+
+        def finish_hide(self):
+            if self.hide_pending and not self.manager.pins:
+                self.hide()
+            self.hide_pending = False
+
+        def focusOutEvent(self, event):
+            super().focusOutEvent(event)
+            if self.hide_pending:
+                self.finish_hide()
 
         def hit(self, point):
             return next((pin for pin in reversed(self.manager.pins) if pin.rect().contains(QPointF(point))), None)
@@ -326,9 +362,7 @@ def gui_types():
             self.manager.pins.append(pin)
             self.setFocus()
             if self.input_shape:
-                focused = self.input_shape.current_focus()
-                if focused != int(self.winId()):
-                    self.previous_focus = focused
+                self.remember_focus()
                 self.input_shape.focus(self.winId())
             if event.button() == Qt.MouseButton.LeftButton:
                 pin.begin_drag(event.globalPosition())
@@ -474,6 +508,7 @@ def gui_types():
                 return
             pin = Pin(image, self, origin, initial_scale)
             self.pins.append(pin)
+            self.surface.hide_pending = False
             self.surface.active = pin
             self.changed()
             self.surface.show()

@@ -141,8 +141,9 @@ try:
     print('Real Shift+wheel uses fine zoom: PASS')
     command('key', 'Escape')
     assert not manager.pins
+    # The surface unmaps only after focus has left it (or after 300 ms).
+    QTest.qWait(350)
     assert not surface.isVisible()
-    QTest.qWait(50)
     focus = subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip()
     assert int(focus) == int(probe.winId()), (focus, int(probe.winId()))
     print('Real drag + wheel + focus + Escape returns focus: PASS')

@@ -26,7 +26,8 @@
 - TypeScript typecheck, Vicinae manifest lint and isolated-output build passed.
 - Native GNOME 46 / XWayland regression passed: zero ConfigureNotify events over
   24 zoom inputs, correct input shape, click-through, drag with wheel, actual
-  Alt+wheel opacity, actual Shift+wheel fine zoom, focus and Escape.
+  Alt+wheel opacity, actual Shift+wheel fine zoom, focus and Escape. On Qt 6,
+  Escape returning focus to the previously focused X11 window passed 6/6 runs.
   Native region selection also passed in both drag directions, retaining the
   same top-left placement; Escape cancelled without creating a pin.
 - Rendered preview visually inspected; only generated images are included.
