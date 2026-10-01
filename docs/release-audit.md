@@ -26,6 +26,9 @@
   24 zoom inputs, correct input shape, click-through, drag with wheel, actual
   Alt+wheel opacity, actual Shift+wheel fine zoom, focus and Escape.
 - Rendered preview visually inspected; only generated images are included.
+  The demo uses 50 fps (350 frames / 7 seconds) and fine-grained scripted input,
+  replacing the earlier 20 fps / isolated-wheel-step sequence. A full-color MP4
+  is included alongside the GIF. Application interaction code was not changed.
 - Source archive is built from committed, tracked files, excluding environments,
   logs, helper state and node_modules.
 

@@ -5,8 +5,9 @@ zoom at the cursor, and adjust opacity without switching windows.
 
 ![Image Pin rendered preview](docs/assets/demo.gif)
 
-*The preview uses generated images and the actual overlay renderer; it is not a
-recording of a private desktop.*
+*Rendered at 50 fps with scripted input and generated images on the actual
+overlay renderer. It is not a recording of a private desktop.
+[Watch the full-color video](docs/assets/demo.mp4).*
 
 Image Pin consists of a **Vicinae extension** and a small **local Linux helper**.
 It also works from the command line. It is not a Raycast extension or a GNOME

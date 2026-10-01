@@ -62,28 +62,66 @@ p.drawLine(316,296,367,251)
 p.end()
 icon.save(str(PROJECT/'extension/assets/icon.png'))
 
+# GIF timestamps use hundredths of a second: 50 fps has an exact 20ms
+# interval. Avoid the original 20fps preview with isolated wheel clicks.
+FPS = 50
+DURATION = 7.
 pointer = QPointF(500,300)
+wheel_total = 0
+holding = False
+
+def smooth_step(value):
+    value = max(0., min(1., value))
+    return value * value * (3 - 2 * value)
+
+def scroll_to(total):
+    global wheel_total
+    target = round(total)
+    delta = target - wheel_total
+    if delta:
+        wheel = QWheelEvent(pointer,pointer,QPoint(),QPoint(0,delta),
+                            Qt.LeftButton if holding else Qt.NoButton,
+                            Qt.NoModifier,Qt.NoScrollPhase,False)
+        pin.wheelEvent(wheel)
+    wheel_total = target
+
 with tempfile.TemporaryDirectory(prefix='image-pin-demo-') as directory:
     frames = Path(directory)
-    for index in range(100):
+    for index in range(round(FPS * DURATION)):
+        time = index / FPS
         title = 'Zoom where you point'
-        if index in (12,20,28,36):
-            wheel = QWheelEvent(pointer,pointer,QPoint(),QPoint(0,120),Qt.NoButton,Qt.NoModifier,Qt.NoScrollPhase,False)
-            pin.wheelEvent(wheel)
-        if index == 45:
-            pin.begin_drag(pointer)
-        if 45 <= index < 72:
+        # Feed fine-grained wheel packets to the unmodified app. The smooth
+        # trajectory belongs to scripted input, not to a fake UI animation.
+        if time < 2.2:
+            scroll_to(480 * smooth_step((time - .3) / 1.6))
+        elif time < 4.1:
             title = 'Drag and zoom together'
-            pointer += QPointF(2,-.6)
+            if not holding:
+                pin.begin_drag(pointer)
+                holding = True
+            amount = smooth_step((time - 2.2) / 1.6)
+            pointer = QPointF(500 + 65 * amount, 300 - 24 * amount)
             pin.drag(pointer)
-            if index in (51,59,67):
-                wheel = QWheelEvent(pointer,pointer,QPoint(),QPoint(0,-120),Qt.LeftButton,Qt.NoModifier,Qt.NoScrollPhase,False)
-                pin.wheelEvent(wheel)
-        if index == 72:
-            pin.end_drag()
-        if index >= 72:
+            scroll_to(480 - 360 * amount)
+        elif time < 5.2:
             title = 'Adjust opacity without changing the original'
-            pin.set_opacity(.65)
+            if holding:
+                pin.end_drag()
+                holding = False
+            pin.set_opacity(1 - .35 * smooth_step((time - 4.1) / .7))
+        else:
+            title = 'Drag and zoom together' if time < 6.6 else 'Zoom where you point'
+            if not holding:
+                pin.begin_drag(pointer)
+                holding = True
+            amount = smooth_step((time - 5.2) / 1.3)
+            pointer = QPointF(565 - 65 * amount, 276 + 24 * amount)
+            pin.drag(pointer)
+            scroll_to(120 * (1 - amount))
+            pin.set_opacity(.65 + .35 * amount)
+            if time >= 6.6:
+                pin.end_drag()
+                holding = False
         app.processEvents()
         frame = QImage(900,540,QImage.Format_ARGB32)
         frame.fill(QColor('#0c1420'))
@@ -97,13 +135,17 @@ with tempfile.TemporaryDirectory(prefix='image-pin-demo-') as directory:
             p.drawText(115,163+row*36,text)
         p.drawPixmap(0,0,manager.surface.grab())
         p.setPen(QPen(QColor('#ffffff'),2)); p.setBrush(Qt.NoBrush); p.drawEllipse(pointer,6,6)
-        p.setPen(QColor('#7e92ae')); p.setFont(QFont('sans',11)); p.drawText(38,505,'Rendered preview · generated reference images · actual overlay renderer')
+        p.setPen(QColor('#7e92ae')); p.setFont(QFont('sans',11)); p.drawText(38,505,'Rendered preview · scripted input · actual overlay renderer')
         p.end()
-        frame.save(str(frames/f'{index:03d}.png'))
-        if index == 85:
+        frame.save(str(frames/f'{index:04d}.png'))
+        if index == round(4.8 * FPS):
             frame.save(str(assets/'preview.png'))
-    subprocess.run(['ffmpeg','-loglevel','error','-y','-framerate','20','-i',str(frames/'%03d.png'),
-                    '-vf','split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse',str(assets/'demo.gif')],check=True)
+    source = ['ffmpeg','-loglevel','error','-y','-framerate',str(FPS),
+              '-i',str(frames/'%04d.png')]
+    subprocess.run(source + ['-vf','split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse=dither=none',
+                            str(assets/'demo.gif')], check=True)
+    subprocess.run(source + ['-c:v','libx264','-crf','18','-pix_fmt','yuv420p',
+                            '-movflags','+faststart', str(assets/'demo.mp4')], check=True)
 manager.close_all()
 manager.surface.hide()
-print('Rendered docs/assets/demo.gif and preview.png from generated images')
+print('Rendered 50fps GIF, MP4 and preview.png using scripted input on the unchanged overlay')
