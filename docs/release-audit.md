@@ -39,7 +39,9 @@
 
 ## Remaining scope and publication status
 
-GitHub Actions is configured but has not run remotely before repository creation.
+The repository was published on 2026-10-01. The first GitHub Actions run failed
+because the runner lacked Qt 6 xcb plugin libraries; after listing them all,
+every check passed remotely, including the Xvfb input test.
 KDE, other desktop environments, macOS, Windows, ARM and a Wayland-only session
 without XWayland are not claimed as supported. Multi-monitor layout handlers
 exist, but broader display/hardware coverage remains open.
@@ -51,4 +53,4 @@ need a separate platform backend as well as a Raycast wrapper.
 
 The store is a separate review process. The standalone repository can be
 published first; a store submission must clearly document the separately
-installed helper. No store publication or remote CI completion is claimed.
+installed helper. No store publication is claimed.

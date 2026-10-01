@@ -177,7 +177,7 @@ The desktop test briefly operates generated test windows and restores the
 pointer. It does not record desktop content. An isolated alternative is
 `xvfb-run -a uv run test_desktop.py`; Xvfb results do not establish GNOME Wayland
 compatibility. GitHub Actions runs unit, installer, manifest, build and isolated
-native X11 checks. The first remote workflow run happens after publication.
+native X11 checks. These run on every push.
 
 To regenerate the rendered preview, install ffmpeg and run
 `uv run scripts/render_demo.py`. To package committed source, run
