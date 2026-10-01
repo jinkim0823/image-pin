@@ -1,0 +1,10 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-only
+set -euo pipefail
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+PROJECT_DIR="$(dirname -- "$(dirname -- "$SCRIPT_PATH")")"
+if [[ ! -x "$PROJECT_DIR/.venv/bin/python" ]]; then
+    printf 'Image Pin is not installed. Run %s/install.sh first.\n' "$PROJECT_DIR" >&2
+    exit 1
+fi
+exec "$PROJECT_DIR/.venv/bin/python" "$PROJECT_DIR/image_pin.py" "$@"

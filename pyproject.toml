@@ -1,0 +1,10 @@
+[project]
+name = "image-pin"
+version = "0.1.0"
+description = "Stable floating image references for Vicinae on Linux"
+readme = "README.md"
+license = "GPL-3.0-only"
+requires-python = ">=3.12"
+dependencies = [
+    "pyqt5>=5.15.11,<6",
+]

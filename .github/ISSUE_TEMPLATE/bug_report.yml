@@ -1,0 +1,22 @@
+name: Bug report
+description: Report a reproducible Image Pin problem
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Distribution, GNOME version, X11/Wayland, Vicinae version, monitors/scaling, mouse or touchpad
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the command and expected versus actual behavior. Use synthetic images where possible.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Relevant diagnostics
+      description: Include only relevant helper errors. Do not attach private screenshots, tokens or entire logs.
