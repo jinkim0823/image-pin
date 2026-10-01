@@ -75,6 +75,15 @@ def gui_types():
     from PySide6.QtNetwork import QLocalServer
     import tempfile
 
+    class PinMenu(QMenu):
+        def leaveEvent(self, event):
+            # Under GNOME XWayland, Qt 6 menus occasionally receive a Leave
+            # while the pointer is still over them, which clears the hovered
+            # item and makes the highlight flicker. Ignore those.
+            if self.rect().contains(self.mapFromGlobal(QCursor.pos())):
+                return
+            super().leaveEvent(event)
+
     class Pin:
         """Logical image, not a native window. All pins share one stable surface."""
         def __init__(self, image, manager, origin=None, initial_scale=1.):
@@ -179,7 +188,7 @@ def gui_types():
                 self.manager.error(tr('Could not save the image.'))
 
         def menu(self, point):
-            menu = QMenu(self.manager.surface)
+            menu = PinMenu(self.manager.surface)
             info = menu.addAction(f'{self.scale * 100:.0f}% · {self.image.width()} × {self.image.height()}')
             info.setEnabled(False)
             menu.addSeparator()

@@ -216,6 +216,28 @@ class PinTests(unittest.TestCase):
         pin.menu(pin.center.toPoint())
         self.assertEqual(result, [.4])
 
+    def test_menu_ignores_leave_while_pointer_is_inside(self):
+        from PySide6.QtCore import QEvent, QTimer
+        from PySide6.QtWidgets import QApplication
+        pin = self.pin()
+        result = []
+        def operate_menu():
+            menu = app.activePopupWidget()
+            copy = next(a for a in menu.actions() if a.text() == 'Copy')
+            menu.setActiveAction(copy)
+            inside = menu.mapToGlobal(menu.actionGeometry(copy).center())
+            with patch.object(QCursor, 'pos', return_value=inside):
+                QApplication.sendEvent(menu, QEvent(QEvent.Type.Leave))
+            result.append(menu.activeAction() is copy)
+            outside = menu.mapToGlobal(menu.rect().bottomRight()) + QPoint(50, 50)
+            with patch.object(QCursor, 'pos', return_value=outside):
+                QApplication.sendEvent(menu, QEvent(QEvent.Type.Leave))
+            result.append(menu.activeAction() is None)
+            menu.close()
+        QTimer.singleShot(10, operate_menu)
+        pin.menu(pin.center.toPoint())
+        self.assertEqual(result, [True, True])
+
     def test_reveal_recovers_offscreen_pins_without_native_resize(self):
         pin = self.pin()
         pin.center = QPointF(-10000, -10000)
