@@ -66,7 +66,21 @@ No Vicinae restart is required. Search for one of these commands:
 | **Close All Pins** | Close every pinned image |
 | **Bring Pins into View** | Bring images back to the current monitor |
 
-Set a command hotkey through Vicinae if desired. In extension preferences,
+On desktops supported by Vicinae's global-shortcut backend, set a command
+hotkey through Vicinae. On GNOME Wayland, use **Settings → Keyboard → View and
+Customize Shortcuts → Custom Shortcuts** instead. For example, bind
+**Super+Shift+P** to this command (use the absolute path to `vicinae` if it is
+not on the desktop session's PATH):
+
+```zsh
+vicinae cmd launch @jinkim0823/image-pin:capture
+```
+
+The **Add Alias** field in Vicinae settings is a search keyword, not a keybinding.
+The installer does not assign or replace desktop shortcuts automatically.
+See [Vicinae global-shortcut support](https://docs.vicinae.com/global-shortcuts).
+
+In extension preferences,
 **Helper executable** defaults to `~/.local/bin/image-pin`. If using a custom
 install directory, change that preference to the absolute executable path.
 **Language** can follow the system, use English, or use Korean.
