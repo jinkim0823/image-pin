@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/vicinaehq/vicinae/main/extra/schemas/extension.json",
   "name": "image-pin",
   "title": "Image Pin",
-  "description": "Pin screenshots and images above your apps with stable cursor-centered zoom",
+  "description": "Pin screenshots and images above your apps with cursor-centered zoom. Requires the separately installed Image Pin helper (GNOME).",
   "icon": "icon.png",
   "author": "jinkim0823",
   "license": "MIT",

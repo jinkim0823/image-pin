@@ -52,6 +52,44 @@ class InstallerTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(installed.read_text(), 'unrelated tool')
 
+    def test_helper_only_skips_extension_build_and_keeps_extensions(self):
+        with tempfile.TemporaryDirectory(prefix='image-pin-helper-') as tmp:
+            root = Path(tmp)
+            source = root / 'source'
+            source.mkdir()
+            for name in ('install.sh', 'uninstall.sh', 'bin'):
+                shutil.copytree(PROJECT / name, source / name) if (PROJECT / name).is_dir() \
+                    else shutil.copy(PROJECT / name, source / name)
+            tools = root / 'tools'
+            tools.mkdir()
+            called = root / 'node-tool-called'
+            stubs = {'uv': 'exit 0', 'gnome-screenshot': 'exit 0',
+                     'ldconfig': 'echo "libxcb-cursor.so.0 (libc6,x86-64) => /stub"'}
+            # Node tools must be neither required nor run for a helper-only install.
+            for name in ('npm', 'node', 'vicinae'):
+                stubs[name] = f'touch "{called}"; exit 1'
+            for name, body in stubs.items():
+                (tools / name).write_text(f'#!/bin/bash\n{body}\n')
+                (tools / name).chmod(0o755)
+            bin_dir = root / 'bin'
+            extension = root / 'data/vicinae/extensions/image-pin'
+            extension.mkdir(parents=True)
+            (extension / 'package.json').write_text('{"name": "image-pin", "author": "jinkim0823"}')
+            env = {**os.environ, 'PATH': str(tools) + os.pathsep + os.environ['PATH'],
+                   'IMAGE_PIN_BIN_DIR': str(bin_dir), 'XDG_DATA_HOME': str(root / 'data')}
+            result = subprocess.run(['bash', str(source / 'install.sh'), '--helper-only'],
+                                    env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((bin_dir / 'image-pin').is_symlink())
+            self.assertFalse(called.exists())
+            subprocess.run(['bash', str(source / 'uninstall.sh'), '--helper-only'],
+                           env=env, check=True, capture_output=True)
+            self.assertFalse((bin_dir / 'image-pin').is_symlink())
+            self.assertTrue((extension / 'package.json').exists())
+            result = subprocess.run(['bash', str(source / 'install.sh'), '--bogus'],
+                                    env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 2)
+
 
 if __name__ == '__main__':
     unittest.main()

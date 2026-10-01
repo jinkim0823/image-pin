@@ -2,7 +2,19 @@
 # SPDX-License-Identifier: GPL-3.0-only
 set -euo pipefail
 PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-for tool in uv npm node vicinae gnome-screenshot; do
+HELPER_ONLY=false
+case "${1:-}" in
+    '') ;;
+    --helper-only) HELPER_ONLY=true ;;
+    *) printf 'Usage: %s [--helper-only]\n' "$0" >&2; exit 2 ;;
+esac
+# The helper alone works from the command line, desktop shortcuts or a Vicinae
+# extension installed from the store; only the local extension build needs Node.
+TOOLS=(uv gnome-screenshot)
+if [[ "$HELPER_ONLY" == false ]]; then
+    TOOLS+=(npm node vicinae)
+fi
+for tool in "${TOOLS[@]}"; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         printf 'Missing prerequisite: %s. See README.md for installation.\n' "$tool" >&2
         exit 1
@@ -24,10 +36,16 @@ if [[ -e "$INSTALL_BIN/image-pin" || -L "$INSTALL_BIN/image-pin" ]]; then
 fi
 cd -- "$PROJECT_DIR"
 uv sync --locked
-npm ci --prefix extension --no-audit --no-fund
-npm run build --prefix extension
+if [[ "$HELPER_ONLY" == false ]]; then
+    npm ci --prefix extension --no-audit --no-fund
+    npm run build --prefix extension
+fi
 ln -sfn -- "$PROJECT_DIR/bin/image-pin" "$INSTALL_BIN/image-pin"
-printf 'Installed Image Pin. Search for Capture & Pin in Vicinae.\n'
+if [[ "$HELPER_ONLY" == true ]]; then
+    printf 'Installed the Image Pin helper: %s/image-pin capture\n' "$INSTALL_BIN"
+else
+    printf 'Installed Image Pin. Search for Capture & Pin in Vicinae.\n'
+fi
 if [[ "$INSTALL_BIN" != "$HOME/.local/bin" ]]; then
     printf 'Set Helper executable in Vicinae preferences to %s/image-pin\n' "$INSTALL_BIN"
 fi

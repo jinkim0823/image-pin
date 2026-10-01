@@ -13,6 +13,7 @@
 - Bring Pins into View recovery command.
 - Built on Qt 6 through PySide6-Essentials; Qt 5.15 no longer receives
   open-source updates.
+- `install.sh --helper-only` installs the helper without Node.js or Vicinae.
 - Escape returns keyboard focus to the previously focused window.
 - Errors use non-blocking desktop notifications.
 - Under Wayland, clipboard and file pins open near the screen center instead

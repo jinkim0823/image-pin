@@ -5,7 +5,15 @@ Drag to move, scroll to zoom at the cursor, Shift+scroll for fine zoom and
 Alt+scroll to adjust opacity. You can zoom while holding and dragging an image.
 
 This extension launches the **separately installed Linux helper**. Install it from
-the Image Pin source repository by running `./install.sh`. The default executable
+the [Image Pin repository](https://github.com/jinkim0823/image-pin):
+
+```bash
+git clone https://github.com/jinkim0823/image-pin.git
+cd image-pin
+./install.sh --helper-only
+```
+
+The default executable
 is `~/.local/bin/image-pin`; change **Helper executable** in extension preferences
 if needed. Missing-helper errors include setup instructions.
 

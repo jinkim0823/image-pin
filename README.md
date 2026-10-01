@@ -56,6 +56,11 @@ installer creates the project's uv environment, installs the locked Node
 dependencies, builds the extension and adds `~/.local/bin/image-pin` as a link
 to the helper. Keep the checkout in place while installed.
 
+To install only the helper, use `./install.sh --helper-only`. Node.js, npm and
+Vicinae are then not required. Use this when the Vicinae extension comes from
+the Vicinae store, or to run Image Pin from desktop shortcuts or another
+launcher with the [command line](#command-line) alone.
+
 No Vicinae restart is required. Search for one of these commands:
 
 | Command | Action |
@@ -192,7 +197,8 @@ See [Contributing](CONTRIBUTING.md) and [Changelog](CHANGELOG.md).
 ```
 
 This stops the helper and removes its launcher link and matching local Vicinae
-extension. The source checkout, saved images and logs are kept. Neither install
+extension. `./uninstall.sh --helper-only` keeps every Vicinae extension, including
+one installed from the store. The source checkout, saved images and logs are kept. Neither install
 nor uninstall replaces unrelated files with the same launcher name.
 
 ## License
