@@ -37,7 +37,9 @@ class Probe(QWidget):
 
 
 def focused():
-    return int(subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip())
+    # Without a window manager, focus may be None/PointerRoot (no window).
+    result = subprocess.run(['xdotool', 'getwindowfocus'], capture_output=True, text=True)
+    return int(result.stdout.strip()) if result.returncode == 0 else 0
 
 
 # With a window manager (GNOME), focus is requested through it; Xvfb has none.
