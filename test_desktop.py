@@ -100,6 +100,11 @@ try:
     assert probe.clicks == 1, probe.clicks
     print('Real click outside image reaches underlying test window: PASS')
 
+    # Clicking a pin takes keyboard focus; Escape must hand it back.
+    command('windowfocus', '--sync', int(probe.winId()))
+    previous = subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip()
+    assert int(previous) == int(probe.winId()), previous
+
     # Real mouse grab, movement and wheel can be combined.
     command('mousemove', 380, 320)
     command('mousedown', 1)
@@ -137,7 +142,10 @@ try:
     command('key', 'Escape')
     assert not manager.pins
     assert not surface.isVisible()
-    print('Real drag + wheel + focus + Escape: PASS')
+    QTest.qWait(50)
+    focus = subprocess.check_output(['xdotool', 'getwindowfocus'], text=True).strip()
+    assert int(focus) == int(probe.winId()), (focus, int(probe.winId()))
+    print('Real drag + wheel + focus + Escape returns focus: PASS')
 
     # The area selector owns its frozen, generated background. Every drag
     # direction must place the pin exactly over the normalized selection,

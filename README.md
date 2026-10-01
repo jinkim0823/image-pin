@@ -96,7 +96,7 @@ install directory, change that preference to the absolute executable path.
 | Right-click | Copy, save, original size, lock, opacity slider, close |
 | Double-click | Restore original size |
 | Ctrl+C | Copy the selected image at its original resolution |
-| Esc | Close the selected image |
+| Esc | Close the selected image and return keyboard focus |
 
 Opacity ranges from 10% to 100%, so a pin cannot become completely invisible.
 Locking prevents movement and zoom; opacity remains adjustable. Copy and Save
@@ -131,7 +131,9 @@ your clipboard manager may retain copied images under its own settings.
 
 Captured images stay exactly over the selected region, regardless of drag
 direction, with a thin gray frame marking the pin. Clipboard and file pins
-appear beside the mouse position instead.
+appear beside the pointer in X11 sessions. Under Wayland, XWayland cannot see
+the pointer over Wayland windows, so they cascade from the primary screen's
+center instead.
 
 The renderer uses one transparent desktop-sized surface. Zoom and drag change
 image transforms inside that surface, leaving its native geometry unchanged.
@@ -153,7 +155,8 @@ input routing and zero native configure events during zoom. See
 - **Capture fails:** check that `gnome-screenshot` is installed and works in your
   GNOME session. Escape cancels the region selector.
 - **Images went off-screen:** run **Bring Pins into View**.
-- **Errors:** inspect only relevant lines from
+- **Errors:** appear as desktop notifications (`notify-send`, falling back to a
+  non-blocking dialog). For details, inspect only relevant lines from
   `~/.local/state/image-pin/helper.log` (or the corresponding `XDG_STATE_HOME`).
 
 ## Development and checks

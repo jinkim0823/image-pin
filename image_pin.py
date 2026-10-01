@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""Image Pin: small Vicinae-controlled floating image windows for GNOME."""
+"""Image Pin: reference images floating on one click-through overlay surface."""
 import argparse
 import json
 import math
 import os
 from pathlib import Path
+import shutil
 import socket
 import subprocess
 import sys
@@ -16,6 +17,9 @@ from i18n import tr, set_language
 PROJECT = Path(__file__).resolve().parent
 RUNTIME = Path(os.environ.get('XDG_RUNTIME_DIR', f'/tmp/image-pin-{os.getuid()}'))
 SOCKET = RUNTIME / 'image-pin.sock'
+# XWayland only learns the pointer position while it is over an X11 window, so
+# under Wayland QCursor.pos() can be stale when a pin is opened from a launcher.
+POINTER_TRACKED = os.environ.get('XDG_SESSION_TYPE') != 'wayland' and 'WAYLAND_DISPLAY' not in os.environ
 
 
 def send(command, path=None, language="system"):
@@ -87,12 +91,17 @@ def gui_types():
                 self.scale = initial_scale
                 self.center = QPointF(origin) + QPointF(image.width(), image.height()) * self.scale / 2
                 return
-            screen = QApplication.screenAt(QCursor.pos()) or QApplication.primaryScreen()
-            available = screen.availableGeometry()
+            screen = QApplication.screenAt(QCursor.pos()) if POINTER_TRACKED else None
+            available = (screen or QApplication.primaryScreen()).availableGeometry()
             self.scale = min(initial_scale, available.width() * .7 / image.width(),
                              available.height() * .7 / image.height())
             width, height = image.width() * self.scale, image.height() * self.scale
-            point = QPointF(QCursor.pos()) + QPointF(20, 20)
+            if POINTER_TRACKED:
+                point = QPointF(QCursor.pos()) + QPointF(20, 20)
+            else:
+                # Cascade from the screen center so successive pins stay visible.
+                offset = (len(manager.pins) % 5 - 2) * 24
+                point = QPointF(available.center()) - QPointF(width, height) / 2 + QPointF(offset, offset)
             x = max(available.left(), min(point.x(), available.right() + 1 - width))
             y = max(available.top(), min(point.y(), available.bottom() + 1 - height))
             self.center = QPointF(x + width / 2, y + height / 2)
@@ -212,6 +221,7 @@ def gui_types():
                     surface.active = None
                 self.manager.changed(old, None)
                 if not self.manager.pins:
+                    surface.release_focus()
                     surface.hide()
 
     class Surface(QWidget):
@@ -228,6 +238,7 @@ def gui_types():
             self.setFocusPolicy(Qt.StrongFocus)
             self.input_shape = None
             self.input_rectangles = None
+            self.previous_focus = None
             if QApplication.platformName() == 'xcb':
                 from x11_input import InputShape
                 self.input_shape = InputShape()
@@ -289,6 +300,13 @@ def gui_types():
                     painter.setPen(QColor(128, 128, 128, 200))
                     painter.drawRect(target.adjusted(-.5, -.5, .5, .5))
 
+        def release_focus(self):
+            # Return keyboard focus to the window used before a pin was clicked.
+            if self.input_shape and self.previous_focus is not None:
+                if self.input_shape.current_focus() == int(self.winId()):
+                    self.input_shape.restore_focus(self.previous_focus)
+                self.previous_focus = None
+
         def hit(self, point):
             return next((pin for pin in reversed(self.manager.pins) if pin.rect().contains(QPointF(point))), None)
 
@@ -308,6 +326,9 @@ def gui_types():
             self.manager.pins.append(pin)
             self.setFocus()
             if self.input_shape:
+                focused = self.input_shape.current_focus()
+                if focused != int(self.winId()):
+                    self.previous_focus = focused
                 self.input_shape.focus(self.winId())
             if event.button() == Qt.LeftButton:
                 pin.begin_drag(event.globalPos())
@@ -355,6 +376,7 @@ def gui_types():
                 return
             if event.key() == Qt.Key_Escape:
                 self.active.close()
+                self.release_focus()
             elif event.matches(QKeySequence.Copy):
                 QApplication.clipboard().setPixmap(self.active.image)
             else:
@@ -490,7 +512,19 @@ def gui_types():
                 pin.close()
 
         def error(self, message):
-            QMessageBox.warning(None, 'Image Pin', message)
+            # A desktop notification never blocks pins or incoming requests.
+            notify = shutil.which('notify-send')
+            if notify:
+                # Detached, so the resident helper never accumulates zombies.
+                started = QProcess.startDetached(notify, ['--app-name=Image Pin', '--icon=dialog-warning',
+                                                          'Image Pin', message])
+                if started[0] if isinstance(started, tuple) else started:
+                    return
+            box = QMessageBox(QMessageBox.Warning, 'Image Pin', message)
+            box.setAttribute(Qt.WA_DeleteOnClose)
+            box.setModal(False)
+            box.show()
+            self.message_box = box
 
         def capture(self):
             if self.capture_process or self.capture_selector:

@@ -319,6 +319,37 @@ class PinTests(unittest.TestCase):
                 self.assertIsNone(self.manager.capture_selector)
                 self.manager.close_all()
 
+    def test_error_uses_detached_notification_without_blocking(self):
+        import image_pin
+        from PyQt5.QtCore import QProcess
+        with patch.object(image_pin.shutil, 'which', return_value='/usr/bin/notify-send'), \
+             patch.object(QProcess, 'startDetached', return_value=True) as start:
+            self.manager.error('test message')
+        program, arguments = start.call_args.args
+        self.assertEqual(program, '/usr/bin/notify-send')
+        self.assertEqual(arguments[-1], 'test message')
+        self.assertIsNone(app.activeModalWidget())
+        with patch.object(image_pin.shutil, 'which', return_value=None):
+            self.manager.error('fallback message')
+        box = self.manager.message_box
+        self.assertTrue(box.isVisible())
+        self.assertFalse(box.isModal())
+        self.assertIsNone(app.activeModalWidget())
+        box.close()
+
+    def test_untracked_pointer_places_pins_from_screen_center(self):
+        import image_pin
+        available = app.primaryScreen().availableGeometry()
+        with patch.object(image_pin, 'POINTER_TRACKED', False), \
+             patch.object(QCursor, 'pos', return_value=QPoint(-5000, -5000)):
+            first = self.pin()
+            second = self.pin()
+        self.assertTrue(available.contains(first.rect().toAlignedRect()))
+        self.assertTrue(available.contains(second.rect().toAlignedRect()))
+        self.assertNotEqual(first.center, second.center)
+        middle = QPointF(available.center())
+        self.assertLess((first.center - middle).manhattanLength(), 120)
+
     def test_pin_frame_is_drawn_just_outside_the_image(self):
         self.manager.pin(self.image, QPointF(100, 100), 1.)
         surface = self.manager.surface

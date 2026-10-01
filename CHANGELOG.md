@@ -11,4 +11,8 @@
 - Per-image opacity slider and Alt+wheel adjustment.
 - English/Korean helper menus and extension language preference.
 - Bring Pins into View recovery command.
+- Escape returns keyboard focus to the previously focused window.
+- Errors use non-blocking desktop notifications.
+- Under Wayland, clipboard and file pins open near the screen center instead
+  of a stale XWayland pointer position.
 - Portable installer, safe launcher removal, tests and CI configuration.
