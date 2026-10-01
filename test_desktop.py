@@ -138,7 +138,36 @@ try:
     assert not manager.pins
     assert not surface.isVisible()
     print('Real drag + wheel + focus + Escape: PASS')
+
+    # The area selector owns its frozen, generated background. Every drag
+    # direction must place the pin beside the normalized selection origin,
+    # never beside the release point. This does not capture desktop content.
+    snapshot = QPixmap(surface.size())
+    snapshot.fill(QColor('#253047'))
+    for start, end in (((260, 240), (460, 340)), ((460, 340), (260, 240))):
+        manager.select_capture(snapshot)
+        QTest.qWait(70)
+        command('mousemove', *start)
+        # XTest pointer warps cross a newly mapped XWayland surface; allow
+        # Mutter to deliver the matching enter/motion before the press.
+        QTest.qWait(70)
+        command('mousedown', 1)
+        command('mousemove', *end)
+        command('mouseup', 1)
+        assert manager.capture_selector is None
+        assert len(manager.pins) == 1
+        pin = manager.pins[0]
+        assert pin.rect().topLeft() == QPointF(280, 260), pin.rect()
+        assert pin.image.width() == 200 and pin.image.height() == 100
+        assert surface.geometry() == native_geometry
+        manager.close_all()
+    manager.select_capture(snapshot)
+    QTest.qWait(70)
+    command('key', 'Escape')
+    assert manager.capture_selector is None and not manager.pins
+    print('Real area selection retains top-left in both directions; Escape cancels: PASS')
 finally:
+    manager.cleanup_selector()
     manager.close_all()
     manager.surface.hide()
     if manager.surface.input_shape:

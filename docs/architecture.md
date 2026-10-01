@@ -21,6 +21,21 @@ automatic placement and resize constraints. Clicking a pin explicitly focuses
 the surface, enabling Ctrl+C and Esc. Closing the last pin hides the surface.
 The helper remains resident until explicitly stopped.
 
+## Capture coordinates
+
+GNOME Screenshot's area command saves an image but does not return the selected
+desktop rectangle. Using the cursor afterward placed the pin beside the drag's
+release point (usually the bottom-right). Image Pin now freezes the desktop with
+GNOME Screenshot, removes the temporary file, and shows its own region selector.
+The selector keeps the normalized rectangle, crops the snapshot, and places the
+pin relative to that rectangle's top-left. Escape or right-click cancels. The
+full snapshot is discarded when selection ends; only the crop becomes a pin.
+
+Snapshot pixels are mapped to Qt desktop coordinates before cropping, preserving
+the initial displayed size on uniformly scaled desktops. This mapping assumes
+the screenshot covers the virtual desktop with a uniform pixel-to-coordinate
+ratio; mixed-DPI multi-monitor behavior still needs hardware verification.
+
 ## What was verified
 
 The native desktop regression uses generated images and an owned underlying

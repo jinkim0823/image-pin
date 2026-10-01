@@ -122,9 +122,17 @@ pins before doing so.
 ## Privacy and implementation
 
 Image Pin makes no network requests during use. Screenshots are loaded from
-private temporary files that are removed after loading. Images otherwise stay
-in memory unless you explicitly save them. Copying uses the system clipboard;
+private temporary files that are removed after loading. Area capture first
+freezes the desktop, then lets you drag a region on that snapshot. The full
+snapshot is discarded after selection or cancellation; only the selected
+image remains pinned. Images otherwise stay in memory unless you explicitly
+save them. Copying uses the system clipboard;
 your clipboard manager may retain copied images under its own settings.
+
+Captured images appear 20 desktop pixels right and down from the selected
+region's top-left, regardless of drag direction. Placement is adjusted near
+screen edges to keep the image visible. Clipboard and file pins use the mouse
+position instead.
 
 The renderer uses one transparent desktop-sized surface. Zoom and drag change
 image transforms inside that surface, leaving its native geometry unchanged.

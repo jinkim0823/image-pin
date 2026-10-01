@@ -66,28 +66,29 @@ def launch(command, path=None, language="system"):
 
 def gui_types():
     from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF, QTimer, QProcess
-    from PyQt5.QtGui import QPixmap, QPainter, QCursor, QColor, QKeySequence
+    from PyQt5.QtGui import QImage, QPixmap, QPainter, QCursor, QColor, QKeySequence
     from PyQt5.QtWidgets import QApplication, QWidget, QMenu, QFileDialog, QMessageBox, QWidgetAction, QSlider, QLabel, QHBoxLayout
     from PyQt5.QtNetwork import QLocalServer
     import tempfile
 
     class Pin:
         """Logical image, not a native window. All pins share one stable surface."""
-        def __init__(self, image, manager):
+        def __init__(self, image, manager, origin=None, initial_scale=1.):
             self.manager = manager
             self.image = image
             self.anchor = None
             self.locked = False
             self.opacity = 1.
-            self.min_scale = min(1., 64 / max(image.width(), image.height()))
+            self.min_scale = min(1., initial_scale, 64 / max(image.width(), image.height()))
             self.max_scale = max(1., min(5., 8192 / max(image.width(), image.height()),
                                        math.sqrt(16_000_000 / (image.width() * image.height()))))
-            screen = QApplication.screenAt(QCursor.pos()) or QApplication.primaryScreen()
+            origin = QPointF(QCursor.pos()) if origin is None else QPointF(origin)
+            screen = QApplication.screenAt(origin.toPoint()) or QApplication.primaryScreen()
             available = screen.availableGeometry()
-            self.scale = min(1., available.width() * .7 / image.width(),
+            self.scale = min(initial_scale, available.width() * .7 / image.width(),
                              available.height() * .7 / image.height())
             width, height = image.width() * self.scale, image.height() * self.scale
-            point = QCursor.pos() + QPoint(20, 20)
+            point = origin + QPointF(20, 20)
             x = max(available.left(), min(point.x(), available.right() + 1 - width))
             y = max(available.top(), min(point.y(), available.bottom() + 1 - height))
             self.center = QPointF(x + width / 2, y + height / 2)
@@ -354,6 +355,7 @@ def gui_types():
         def __init__(self, serve=True):
             self.pins = []
             self.capture_process = None
+            self.capture_selector = None
             self.connections = set()
             self.server = QLocalServer()
             self.daemon_lock = None
@@ -428,16 +430,18 @@ def gui_types():
                 elif command == 'shutdown':
                     if self.capture_process:
                         self.capture_process.kill()
+                    if self.capture_selector:
+                        self.capture_selector.cancel()
                     self.close_all()
                     QApplication.quit()
             except Exception as error:
                 self.error(str(error))
 
-        def pin(self, image):
+        def pin(self, image, origin=None, initial_scale=1.):
             if image.isNull():
                 self.error(tr('No image found. Copy an image or choose an image file.'))
                 return
-            pin = Pin(image, self)
+            pin = Pin(image, self, origin, initial_scale)
             self.pins.append(pin)
             self.surface.active = pin
             self.changed()
@@ -480,7 +484,7 @@ def gui_types():
             QMessageBox.warning(None, 'Image Pin', message)
 
         def capture(self):
-            if self.capture_process:
+            if self.capture_process or self.capture_selector:
                 return
             self.capture_dir = tempfile.TemporaryDirectory(prefix='image-pin-', dir=RUNTIME)
             destination = str(Path(self.capture_dir.name) / 'capture.png')
@@ -491,8 +495,9 @@ def gui_types():
             timer.timeout.connect(process.kill)
             process.finished.connect(lambda code, status: self.capture_done(process, destination, code))
             process.errorOccurred.connect(lambda error: self.capture_failed(process, error))
-            # Native GNOME area selector; no editor, save dialog or persistent file.
-            process.start('gnome-screenshot', ['--area', '--file', destination])
+            # Freeze once, then select ourselves so the capture retains its
+            # normalized top-left instead of using the cursor at drag release.
+            process.start('gnome-screenshot', ['--file', destination])
             timer.start(120000)
 
         def capture_failed(self, process, error):
@@ -504,14 +509,45 @@ def gui_types():
             if self.capture_process is not process:
                 return
             if Path(destination).exists():
-                image = QPixmap(destination)
-                self.pin(image)
+                # Loading through QImage avoids Qt's automatic file-backed
+                # pixmap cache retaining the full desktop snapshot afterward.
+                image = QPixmap.fromImage(QImage(destination))
+                self.cleanup_capture(process)
+                if image.isNull():
+                    self.error(tr('Capture failed: {detail}', detail=tr('No image found. Copy an image or choose an image file.')))
+                    return
+                self.select_capture(image)
+                return
             elif code != 0:
                 detail = bytes(process.readAllStandardError()).decode(errors='replace').strip()
-                # Escape in GNOME's selector is cancellation, not an error.
+                # A cancelled screenshot backend need not show an error.
                 if detail and 'cancel' not in detail.lower():
                     self.error(tr('Capture failed: {detail}', detail=detail[-500:]))
             self.cleanup_capture(process)
+
+        def select_capture(self, image):
+            from capture_selector import CaptureSelector
+            selector = CaptureSelector(image, self.surface.geometry())
+            self.capture_selector = selector
+            selector.selected.connect(self.capture_selected)
+            selector.cancelled.connect(self.cleanup_selector)
+            selector.show()
+            selector.raise_()
+            selector.activateWindow()
+            selector.setFocus()
+            if self.surface.input_shape:
+                self.surface.input_shape.focus(selector.winId())
+
+        def capture_selected(self, image, origin, initial_scale):
+            self.cleanup_selector()
+            self.pin(image, origin, initial_scale)
+
+        def cleanup_selector(self):
+            selector = self.capture_selector
+            self.capture_selector = None
+            if selector:
+                selector.hide()
+                selector.deleteLater()
 
         def cleanup_capture(self, process):
             self.capture_dir.cleanup()
@@ -548,6 +584,7 @@ def main():
         if manager.daemon_lock:
             manager.daemon_lock.close()
         manager.surface.hide()
+        manager.cleanup_selector()
         if manager.surface.input_shape:
             manager.surface.input_shape.close()
         if manager.capture_process:

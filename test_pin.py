@@ -5,8 +5,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
-from PyQt5.QtCore import Qt, QPoint, QPointF, QEvent
-from PyQt5.QtGui import QPixmap, QColor, QMouseEvent, QWheelEvent
+from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QEvent
+from PyQt5.QtGui import QPixmap, QColor, QMouseEvent, QWheelEvent, QCursor
 from PyQt5.QtTest import QTest
 from image_pin import gui_types
 
@@ -22,6 +22,7 @@ class PinTests(unittest.TestCase):
         self.image.fill(QColor('blue'))
 
     def tearDown(self):
+        self.manager.cleanup_selector()
         self.manager.close_all()
         surface = self.manager.surface
         surface.hide()
@@ -287,9 +288,74 @@ class PinTests(unittest.TestCase):
         self.manager.capture_dir = directory
         self.manager.capture_process = process
         self.manager.capture_done(process, str(destination), 0)
-        self.assertEqual(len(self.manager.pins), 1)
+        self.assertFalse(self.manager.pins)
+        self.assertIsNotNone(self.manager.capture_selector)
         self.assertFalse(destination.exists())
         self.assertIsNone(self.manager.capture_process)
+
+    def test_capture_uses_selected_top_left_for_every_drag_direction(self):
+        snapshot = QPixmap(app.primaryScreen().geometry().size())
+        snapshot.fill(QColor('#ff426b'))
+        for start, end in (
+            (QPoint(120, 140), QPoint(320, 240)),
+            (QPoint(320, 240), QPoint(120, 140)),
+            (QPoint(120, 240), QPoint(320, 140)),
+            (QPoint(320, 140), QPoint(120, 240)),
+        ):
+            with self.subTest(start=start, end=end):
+                self.manager.select_capture(snapshot)
+                selector = self.manager.capture_selector
+                with patch.object(QCursor, 'pos', return_value=QPoint(700, 500)):
+                    press = QMouseEvent(QEvent.MouseButtonPress, start, start,
+                                        Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+                    release = QMouseEvent(QEvent.MouseButtonRelease, end, end,
+                                          Qt.LeftButton, Qt.NoButton, Qt.NoModifier)
+                    selector.mousePressEvent(press)
+                    selector.mouseReleaseEvent(release)
+                pin = self.manager.pins[-1]
+                self.assertEqual(pin.rect().topLeft(), QPointF(140, 160))
+                self.assertEqual(pin.image.size(), QRect(0, 0, 200, 100).size())
+                self.assertEqual(pin.image.toImage().pixelColor(0, 0), QColor('#ff426b'))
+                self.assertIsNone(self.manager.capture_selector)
+                self.manager.close_all()
+
+    def test_capture_maps_scaled_snapshot_and_negative_desktop_origin(self):
+        from capture_selector import CaptureSelector
+        snapshot = QPixmap(400, 300)
+        snapshot.fill(QColor('green'))
+        pixels = snapshot.toImage()
+        pixels.setPixelColor(40, 40, QColor('red'))
+        pixels.setPixelColor(279, 219, QColor('blue'))
+        snapshot = QPixmap.fromImage(pixels)
+        selector = CaptureSelector(snapshot, QRect(-100, -50, 200, 150))
+        selected = []
+        selector.selected.connect(lambda *args: selected.append(args))
+        start, end = QPoint(40, 60), QPoint(-80, -30)
+        selector.mousePressEvent(QMouseEvent(QEvent.MouseButtonPress, start, start,
+                                            Qt.LeftButton, Qt.LeftButton, Qt.NoModifier))
+        selector.mouseReleaseEvent(QMouseEvent(QEvent.MouseButtonRelease, end, end,
+                                              Qt.LeftButton, Qt.NoButton, Qt.NoModifier))
+        self.assertEqual(len(selected), 1)
+        image, origin, scale = selected[0]
+        self.assertEqual(origin, QPointF(-80, -30))
+        self.assertEqual(image.size(), QRect(0, 0, 240, 180).size())
+        self.assertEqual(scale, .5)
+        self.assertEqual(image.devicePixelRatioF(), 1.)
+        self.assertEqual(image.toImage().pixelColor(0, 0), QColor('red'))
+        self.assertEqual(image.toImage().pixelColor(239, 179), QColor('blue'))
+        self.assertTrue(selector.snapshot.isNull())
+        selector.deleteLater()
+
+    def test_cancel_own_selector_creates_no_pin(self):
+        self.manager.select_capture(self.image)
+        selector = self.manager.capture_selector
+        QTest.keyClick(selector, Qt.Key_Escape)
+        self.assertIsNone(self.manager.capture_selector)
+        self.assertFalse(self.manager.pins)
+        self.manager.select_capture(self.image)
+        self.manager.capture_selector.close()
+        self.assertIsNone(self.manager.capture_selector)
+        self.assertFalse(self.manager.pins)
 
     def test_capture_cancel_leaves_no_pin(self):
         from PyQt5.QtCore import QProcess

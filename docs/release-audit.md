@@ -10,6 +10,7 @@
 | Rendering | Fixed native surface; cursor-centered image transforms, transparency and click-through input |
 | Opacity | 10–100% slider and Alt+wheel; original image data retained |
 | Input | Real modifier-wheel behavior checked; Qt horizontal translation handled for Alt/Shift gestures |
+| Capture placement | Frozen-snapshot selector retains the normalized top-left in both drag directions; 20 px placement offset |
 | Recovery | Bring Pins into View command for off-screen images |
 | Helper lifecycle | Exclusive daemon lock; rejected requests do not spawn another helper |
 | Licensing | GPL-3.0-only helper; independent MIT wrapper, with notices retained in bundled commands |
@@ -18,13 +19,16 @@
 
 ## Validation
 
-- 17 unit/render/interaction/language/lifecycle tests passed locally.
+- 20 unit/render/interaction/language/lifecycle tests passed locally, including
+  capture placement, reverse drags, snapshot cropping/scaling and cancellation.
 - Installation/removal regression passed from a path with spaces; unrelated
   launcher files were preserved.
 - TypeScript typecheck, Vicinae manifest lint and isolated-output build passed.
 - Native GNOME 46 / XWayland regression passed: zero ConfigureNotify events over
   24 zoom inputs, correct input shape, click-through, drag with wheel, actual
   Alt+wheel opacity, actual Shift+wheel fine zoom, focus and Escape.
+  Native region selection also passed in both drag directions, retaining the
+  same top-left placement; Escape cancelled without creating a pin.
 - Rendered preview visually inspected; only generated images are included.
   The demo uses 50 fps (350 frames / 7 seconds) and fine-grained scripted input,
   replacing the earlier 20 fps / isolated-wheel-step sequence. A full-color MP4
